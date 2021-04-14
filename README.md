@@ -19,6 +19,12 @@ as needed: unattended use `-Force`, get some additional details `-Verbose` or to
 
 You should provide your own custom `userdata.yaml` as script parameter and customize the final image.
 
+## Troubleshooting
+If you get error `ERROR Daemon /proc/net/route contains no routes` on serial
+console then you need to check if your VM has got and IP address - that is
+requirement for provisioning to finish. You need to reboot VM after adding IP
+to finish with provisioning.
+
 ## Similar projects and credits
 https://blogs.msdn.microsoft.com/virtual_pc_guy/2015/06/23/building-a-daily-ubuntu-image-for-hyper-v/
 
