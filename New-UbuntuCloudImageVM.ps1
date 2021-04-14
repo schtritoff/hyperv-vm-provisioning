@@ -345,7 +345,7 @@ if (!(test-path "$($imageCachePath)\ubuntu-$($stamp).$($ubuntuFileExtension)")) 
     # download new image
     Invoke-WebRequest "$($ubuntuPath).$($ubuntuFileExtension)" -OutFile "$($imageCachePath)\ubuntu-$($stamp).$($ubuntuFileExtension).tmp" -UseBasicParsing
     # rename from .tmp to $($ubuntuFileExtension)
-    Remove-Item "$($imageCachePath)\ubuntu-$($stamp).$($ubuntuFileExtension)" -Force
+    Remove-Item "$($imageCachePath)\ubuntu-$($stamp).$($ubuntuFileExtension)" -Force -ErrorAction 'SilentlyContinue'
     Rename-Item -path "$($imageCachePath)\ubuntu-$($stamp).$($ubuntuFileExtension).tmp" `
       -newname "ubuntu-$($stamp).$($ubuntuFileExtension)"
     Write-Host -ForegroundColor Green " Done."
