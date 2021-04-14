@@ -39,6 +39,8 @@ param(
   [string] $GuestAdminUsername = "user",
   [string] $GuestAdminPassword = "Passw0rd",
   [string] $UbuntuVersion = "20.04", # $UbuntuName ="focal" # 20.04 LTS , $UbuntuName="bionic" # 18.04 LTS
+  [string] $UbuntuRelease = "release", # default option is get latest but could be fixed to some specific version for example "release-20210413"
+  [string] $UbuntuBaseUrl = "http://cloud-images.ubuntu.com/releases", # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
   [bool] $BaseImageCheckForUpdate = $true, # check for newer image at Ubuntu cloud-images site
   [bool] $BaseImageCleanup = $true, # delete old vhd image. Set to false if using (TODO) differencing VHD
   [switch] $ShowSerialConsoleWindow = $false,
@@ -95,13 +97,13 @@ $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar.exe"
 # Update this to the release of Ubuntu that you want
 Switch ($UbuntuVersion) {
   "18.04" {
-    $ubuntuUrlRoot = "http://cloud-images.ubuntu.com/releases/18.04/release/" # latest
-    $ubuntuFileName = "ubuntu-18.04-server-cloudimg-amd64-azure"
+    $ubuntuUrlRoot = "$UbuntuBaseUrl/$UbuntuVersion/$UbuntuRelease/" # latest
+    $ubuntuFileName = "ubuntu-$UbuntuVersion-server-cloudimg-amd64-azure"
     $ubuntuFileExtension = "vhd.tar.gz"
   }
   "20.04" {
-    $ubuntuUrlRoot = "http://cloud-images.ubuntu.com/releases/20.04/release/"
-    $ubuntuFileName = "ubuntu-20.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
+    $ubuntuUrlRoot = "$UbuntuBaseUrl/$UbuntuVersion/$UbuntuRelease/"
+    $ubuntuFileName = "ubuntu-$UbuntuVersion-server-cloudimg-amd64-azure" # should contain "vhd.*" version
     $ubuntuFileExtension = "vhd.zip" # or "vhd.tar.gz" on older releases
   }
   default {throw "Ubuntu version $UbuntuVersion not supported."}
