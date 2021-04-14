@@ -142,26 +142,7 @@ if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
 # Delete the VM if it is around
 $vm = Get-VM -VMName $VMName -ErrorAction 'SilentlyContinue'
 if ($vm) {
-  if ($force -or $PSCmdlet.ShouldContinue("Are you sure you want to delete VM $VMname ?", "Data purge warning"))
-  {
-    # there could be many VM's with the same VMName
-    $vm | ForEach-Object {
-      Write-Host "Stop and delete VM $($_.Name) and its data files..." -NoNewline
-      if ($_.State -eq 'Running') {
-        Write-Verbose "VM $_ is still running, stopping it..."
-        stop-vm $_ -TurnOff -Confirm:$false | Out-Null
-      }
-      # remove snapshots
-      Remove-VMSnapshot -VM $_ -IncludeAllChildSnapshots -ErrorAction SilentlyContinue
-      # remove disks
-      $_.id | get-vhd -ErrorAction SilentlyContinue | ForEach-Object {
-        remove-item -path $_.path -force -ErrorAction SilentlyContinue
-      }
-      # remove vm
-      Remove-VM -VM $_ -Force -ErrorAction SilentlyContinue | Out-Null
-    }
-    Write-Host -ForegroundColor Green " Done."
-  }
+  & .\Cleanup-VM.ps1 $VMName -Force:$Force
 }
 
 # metadata for cloud-init
