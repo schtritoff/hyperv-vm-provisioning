@@ -11,13 +11,21 @@
 - Works on Windows 10 and Hyper-V 2016
 
 ## Example usage
-    .\New-UbuntuCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "ubuntu-1" -UbuntuVersion "20.04" -VirtualSwitchName "SW01" -VMGeneration 2
+```powershell
+.\New-UbuntuCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "ubuntu-1" -UbuntuVersion "20.04" -VirtualSwitchName "SW01" -VMGeneration 2
+```
 Wait for image download and after starting VM some **20 minutes** for the first boot. Quite a time but cloud-init `DataSourceAzure` seems to wait that long for Azure IMDS reply before giving up and falling back to provising using provided userdata from CD drive.
 
 Default username is `user` and password is `Passw0rd` (easily overriden with script parameters). Use standard parameters
 as needed: unattended use `-Force`, get some additional details `-Verbose` or to make initial checkpoint for VM use `-Debug`.
 
 You should provide your own custom `userdata.yaml` as script parameter and customize the final image.
+
+## Download
+One line powershell command
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; $r='hyperv-vm-provisioning'; iwr -Uri 'https://github.com/schtritoff/hyperv-vm-provisioning/archive/master.zip' -UseBasicParsing -OutFile "$r.zip" ; Expand-Archive "$r.zip" -Force ; Remove-Item "$r.zip" -Force
+```
 
 ## Troubleshooting
 If you get error `ERROR Daemon /proc/net/route contains no routes` on serial
