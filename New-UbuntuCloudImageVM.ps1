@@ -29,7 +29,10 @@ param(
   [string] $VMName = "UbuntuVm",
   [int] $VMGeneration = 1, # create gen1 hyper-v machine because of portability to Azure (https://docs.microsoft.com/en-us/azure/virtual-machines/windows/prepare-for-upload-vhd-image)
   [int] $VMProcessorCount = 1,
+  [bool] $DynamicMemoryEnabled = $false,
   [uint64] $VMMemoryStartupBytes = 1024MB,
+  [uint64] $MinimumBytes = $VMMemoryStartupBytes,
+  [uint64] $MaximumBytes = $VMMemoryStartupBytes,
   [uint64] $VHDSizeBytes = 30GB,
   [string] $VirtualSwitchName = '',
   [string] $VMVersion = "8.0", # version 8.0 for hyper-v 2016 compatibility , check all possible values with Get-VMHostSupportedVersion
@@ -432,6 +435,11 @@ $vm = new-vm -Name $VMName -MemoryStartupBytes $VMMemoryStartupBytes `
                -VHDPath "$VMDiskPath" -Generation $VMGeneration `
                -BootDevice VHD -Version $VMVersion | out-null
 Set-VMProcessor -VMName $VMName -Count $VMProcessorCount
+If ($DynamicMemoryEnabled) {
+  Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $DynamicMemoryEnabled -MaximumBytes $MaximumBytes -MinimumBytes $MinimumBytes
+} else {
+  Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $DynamicMemoryEnabled
+}
 # make sure VM has DVD drive needed for provisioning
 if ($null -eq (Get-VMDvdDrive -VMName $VMName)) {
   Add-VMDvdDrive -VMName $VMName
