@@ -37,6 +37,9 @@ param(
   [string] $VirtualSwitchName = '',
   [string] $VMVersion = "8.0", # version 8.0 for hyper-v 2016 compatibility , check all possible values with Get-VMHostSupportedVersion
   [string] $VMHostname = $VMName,
+  [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
+  [string] $VMMachinePath = $null, # if not defined here default Virtal Machine path is used
+  [string] $VMStoragePath = $null, # if not defined here Hyper-V settings path / fallback path is set below
   [string] $DomainName = "domain.local",
   [string] $CustomUserDataYamlFile,
   [string] $GuestAdminUsername = "user",
@@ -117,13 +120,32 @@ $ubuntuManifestSuffix = "vhd.manifest"
 $ubuntuPath = "$($ubuntuUrlRoot)$($ubuntuFileName)"
 $ubuntuHash = "$($ubuntuUrlRoot)SHA256SUMS"
 
+if ($null -ne $VMMachine_StoragePath) {
+  $VMMachinePath = $VMMachine_StoragePath
+  $VMStoragePath = "$VMMachine_StoragePath\$VMName\Virtual Hard Disks"
+}
+
+# Get default Virtual Machine path (requires administrative privileges)
+if (-not $VMMachinePath) {
+  $vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
+  $vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
+  $VMMachinePath = $vmmsSettings.DefaultVirtualMachinePath
+  # fallback
+  if (-not $VMMachinePath) {
+    $VMMachinePath = "C:\ProgramData\Microsoft\Windows\Hyper-V"
+  }
+}
+if (!(test-path $VMMachinePath)) {mkdir -Path $VMMachinePath | out-null}
+
 # Get default Virtual Hard Disk path (requires administrative privileges)
-$vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
-$vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
-$VMStoragePath = $vmmsSettings.DefaultVirtualHardDiskPath
-# fallback
 if (-not $VMStoragePath) {
-  $VMStoragePath = "C:\Hyper-V"
+  $vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
+  $vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
+  $VMStoragePath = $vmmsSettings.DefaultVirtualHardDiskPath
+  # fallback
+  if (-not $VMStoragePath) {
+    $VMStoragePath = "C:\Users\Public\Documents\Hyper-V\Virtual Hard Disks"
+  }
 }
 if (!(test-path $VMStoragePath)) {mkdir -Path $VMStoragePath | out-null}
 
@@ -432,6 +454,7 @@ try {
 # Create new virtual machine and start it
 Write-Host "Create VM..." -NoNewline
 $vm = new-vm -Name $VMName -MemoryStartupBytes $VMMemoryStartupBytes `
+               -Path "$VMMachinePath" `
                -VHDPath "$VMDiskPath" -Generation $VMGeneration `
                -BootDevice VHD -Version $VMVersion | out-null
 Set-VMProcessor -VMName $VMName -Count $VMProcessorCount
