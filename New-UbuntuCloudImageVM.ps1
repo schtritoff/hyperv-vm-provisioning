@@ -484,6 +484,15 @@ if ($VMGeneration -eq 2) {
 
   # ubuntu 18.04+ supports enhanced session
   Set-VM -VMName $VMName -EnhancedSessionTransportType HvSocket
+
+  # For copy&paste service (hv_fcopy_daemon) between host and guest we need also this
+  # guest service interface activation which has sadly language dependent setup:
+  # PS> Enable-VMIntegrationService -VMName $VMName -Name "Guest Service Interface"
+  # PS> Enable-VMIntegrationService -VMName $VMName -Name "Gastdienstschnittstelle"
+  # https://administrator.de/forum/hyper-v-cmdlet-powershell-sprachproblem-318175.html
+  Get-VMIntegrationService -VMName $VMName `
+            | ?{$_.Name -match 'Gastdienstschnittstelle|Guest Service Interface'} `
+            | Enable-VMIntegrationService
 }
 
 # disable automatic checkpoints, https://github.com/hashicorp/vagrant/issues/10251#issuecomment-425734374
