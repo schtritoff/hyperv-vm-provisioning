@@ -44,6 +44,7 @@ param(
   [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
   [string] $VMMachinePath = $null, # if not defined here default Virtal Machine path is used
   [string] $VMStoragePath = $null, # if not defined here Hyper-V settings path / fallback path is set below
+  [bool] $UseAzure_Chassis_Asset_Tag = $false,
   [string] $DomainName = "domain.local",
   [string] $StaticMacAddress = $null,
   [string] $NetInterface = "eth0",
@@ -135,6 +136,10 @@ $qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img\qemu-img.exe"
 $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar.exe"
 
 # Update this to the release of Image that you want
+# But Azure images can't be used because the waagent is trying to find ephemeral disk
+# and it's searching causing 20 / 40 minutes minutes delay for 1st boot
+# https://docs.microsoft.com/en-us/troubleshoot/azure/virtual-machines/cloud-init-deployment-delay
+# and also somehow causing at sshd restart in password setting task to stuck for 30 minutes.
 Switch ($ImageVersion) {
   "18.04" {
     $_ = "bionic"
@@ -181,7 +186,7 @@ Switch ($ImageVersion) {
     # http://cloud.debian.org/images/cloud/buster/latest/debian-10-azure-amd64.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
     $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
-    $ImageFileName = "$ImageOS-$ImageVersion-azure-amd64" # should contain "vhd.*" version
+    $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "vhd.*" version
     $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
@@ -198,7 +203,7 @@ Switch ($ImageVersion) {
     # http://cloud.debian.org/images/cloud/bullseye/latest/debian-11-azure-amd64.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
     $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
-    $ImageFileName = "$ImageOS-$ImageVersion-azure-amd64" # should contain "raw" version
+    $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "raw" version
     $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
@@ -558,8 +563,9 @@ if (-not [string]::IsNullOrEmpty($CustomUserDataYamlFile) -and (Test-Path $Custo
   $userdata = $ExecutionContext.InvokeCommand.ExpandString( $(Get-Content $CustomUserDataYamlFile -Raw) ) # parse variables
 }
 
-# cloud-init configuration that will be merged, see https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
-$dscfg = @"
+if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true)) {
+  # cloud-init configuration that will be merged, see https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
+  $dscfg = @"
 datasource:
  Azure:
   agent_command: ["/bin/systemctl", "disable walinuxagent.service"]
@@ -577,8 +583,8 @@ datasource:
   set_hostname: false
 "@
 
-# src https://github.com/Azure/WALinuxAgent/blob/develop/tests/data/ovf-env.xml
-$ovfenvxml = [xml]@"
+  # src https://github.com/Azure/WALinuxAgent/blob/develop/tests/data/ovf-env.xml
+  $ovfenvxml = [xml]@"
 <?xml version="1.0" encoding="utf-8"?>
 <Environment xmlns="http://schemas.dmtf.org/ovf/environment/1" xmlns:oe="http://schemas.dmtf.org/ovf/environment/1" xmlns:wa="http://schemas.microsoft.com/windowsazure" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <wa:ProvisioningSection>
@@ -628,6 +634,7 @@ $ovfenvxml = [xml]@"
   -->
  </Environment>
 "@
+}
 
 # Make temp location for iso image
 mkdir -Path "$($tempPath)\Bits"  | out-null
@@ -639,30 +646,39 @@ if (($NetAutoconfig -eq $false) -and
   Set-Content "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") -Encoding Byte
 }
 Set-Content "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") -Encoding Byte
-$ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
+if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true)) {
+  $ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
+}
 
 # Create meta data ISO image, src: https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
 #,"-u1","-udfver200"
 #& $oscdimgPath "$($tempPath)\Bits" "$($metaDataIso).2.iso" -u2 -udfver200
-Write-Host "Creating metadata iso for VM provisioning..." -NoNewline
+Write-Host "Creating metadata iso for VM provisioning - " -NoNewline
 $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
-<# azure #>
-Start-Process `
-	-FilePath $oscdimgPath `
-  -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-u2","-udfver200" `
-	-Wait -NoNewWindow `
-	-RedirectStandardOutput "$($tempPath)\oscdimg.log" `
-  -RedirectStandardError "$($tempPath)\oscdimg-error.log"
+if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true)) {
+  <# azure #>
+  Write-Host "Azure format..." -NoNewline
+  Start-Process `
+	  -FilePath $oscdimgPath `
+    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-u2","-udfver200" `
+	  -Wait -NoNewWindow `
+	  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
+    -RedirectStandardError "$($tempPath)\oscdimg-error.log"
+} elseif ($ImageFileName.Contains("nocloud") -or ($UseAzure_Chassis_Asset_Tag -eq $false)) {
+  <# NoCloud #>
+  Write-Host "NoCloud format.." -NoNewline
+  Start-Process `
+	  -FilePath $oscdimgPath `
+    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
+	  -Wait -NoNewWindow `
+	  -RedirectStandardOutput "$($tempPath)\oscdimg.log"
+} else {
+  Write-Host "Error: Image Type not supported."
+  exit 1
+}
 
-<# NoCloud
-Start-Process `
-	-FilePath $oscdimgPath `
-  -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
-	-Wait -NoNewWindow `
-	-RedirectStandardOutput "$($tempPath)\oscdimg.log"
-#>
 if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
 Write-Verbose "Metadata iso written"
 Write-Host -ForegroundColor Green " Done."
@@ -673,7 +689,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
   try {
     # If we do not have a matching image - delete the old ones and download the new one
     Write-Host 'Removing old images from cache...' -NoNewline
-    Remove-Item "$($ImageCachePath)\$($ImageOS)-*.vhd*"
+    Remove-Item "$($ImageCachePath)" -include "$($ImageOS)-*.vhd*", "$($ImageOS)-*.tar.*"
     Write-Host -ForegroundColor Green " Done."
 
     # get headers for content length
@@ -898,10 +914,14 @@ if ($null -ne (Get-Command Hyper-V\Set-VM).Parameters["AutomaticCheckpointsEnabl
 
 Write-Host -ForegroundColor Green " Done."
 
-# set chassistag to "Azure chassis tag" as documented in https://git.launchpad.net/cloud-init/tree/cloudinit/sources/DataSourceAzure.py#n51
-Write-Host "Set Azure chasis tag ..." -NoNewline
-& .\Set-VMAdvancedSettings.ps1 -VM $VMName -ChassisAssetTag '7783-7084-3265-9085-8269-3286-77' -Force -Verbose:$verbose
-Write-Host -ForegroundColor Green " Done."
+if ($UseAzure_Chassis_Asset_Tag -eq $true) {
+  # set chassistag to "Azure chassis tag" as documented in https://git.launchpad.net/cloud-init/tree/cloudinit/sources/DataSourceAzure.py#n51
+  Write-Host "Set Azure chasis tag ..." -NoNewline
+  # https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
+  & .\Set-VMAdvancedSettings.ps1 -VM $VMName -ChassisAssetTag '7783-7084-3265-9085-8269-3286-77' -Force -Verbose:$verbose
+  Write-Host -ForegroundColor Green " Done."
+}
+
 Write-Host "Set BIOS and chasis serial number to machine ID $VmMachineId ..." -NoNewline
 & .\Set-VMAdvancedSettings.ps1 -VM $VMName -BIOSSerialNumber $VmMachineId -ChassisSerialNumber $vmMachineId -Force -Verbose:$verbose
 Write-Host -ForegroundColor Green " Done."
