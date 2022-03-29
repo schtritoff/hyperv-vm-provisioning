@@ -53,6 +53,11 @@ param(
   [string] $NetGateway = $null,
   [string] $NameServers = "1.1.1.1,1.0.0.1",
   [string] $NetConfigType = $null, # ENI, v1, v2, ENI-file, dhclient
+  [string] $KeyboardLayout = "us",
+  [string] $KeyboardModel = "pc105",
+  [string] $KeyboardOptions = "compose:rwin",
+  [string] $Locale = "en_US", # "en_US.UTF-8",
+  [string] $TimeZone = "UTC", # UTC or continental zones of IANA DB like: Europe/Berlin
   [string] $CustomUserDataYamlFile,
   [string] $GuestAdminUsername = "user",
   [string] $GuestAdminPassword = "Passw0rd",
@@ -109,7 +114,7 @@ function cleanupFile ([string]$file) {
   }
 }
 
-$FQDN = $VMHostname + "." + $DomainName
+$FQDN = $VMHostname.ToLower() + "." + $DomainName.ToLower()
 # Instead of GUID, use 26 digit machine id suitable for BIOS serial number
 # src: https://stackoverflow.com/a/67077483/1155121
 # $vmMachineId = [Guid]::NewGuid().ToString()
@@ -448,30 +453,73 @@ if ($null -ne $networkconfig) {
 # userdata for cloud-init, https://cloudinit.readthedocs.io/en/latest/topics/examples.html
 $userdata = @"
 #cloud-config
+# vim: syntax=yaml
+# created: $(Get-Date -UFormat "%a %b/%d/%Y %T %Z")
+
 hostname: $($VMHostname)
 fqdn: $($FQDN)
+# cloud-init Bug 21.4.1: locale update prepends "LANG=" like in
+# /etc/defaults/locale set and results into error
+#locale: $Locale
+timezone: $TimeZone
+
+growpart:
+  mode: auto
+  devices: [/]
+  ignore_growroot_disabled: false
+
+apt_preserve_sources_list: true
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+packages:
+  - hyperv-daemons
+  - eject
+  - console-setup
+  - keyboard-configuration
+
+# documented keyboard option, but not implemented ?
+keyboard:
+  layout: $KeyboardLayout
+  model: $KeyboardModel
+  variant: $KeyboardVariant
+  options: $KeyboardOptions
+
+system_info:
+  default_user:
+    name: $($GuestAdminUsername)
+
 password: $($GuestAdminPassword)
-chpasswd: { expire: False }
-ssh_pwauth: True
+chpasswd: { expire: false }
+ssh_pwauth: true
+
+#ssh_authorized_keys:
+#  - ssh-rsa AAAAB... comment
+
+# bootcmd can be setup like runcmd but would run at very early stage
+# on every cloud-init assisted boot if not prepended by command "cloud-init-per":
+#bootcmd:
+  # - [ cloud-init-per, sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
 runcmd:
-  #- [ sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
+  # - [ sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
   # force password change on 1st boot
-  #- [ chage, -d, 0, $($GuestAdminUsername) ]
+  # - [ chage, -d, 0, $($GuestAdminUsername) ]
   # remove metadata iso
-  - [ sh, -c, "if test -b /dev/cdrom; then eject;          fi" ]
-  - [ sh, -c, "if test -b /dev/sr0;   then eject /dev/sr0; fi" ]
-  # dont start waagent service since it useful only for azure/scvmm
-  - 'systemctl stop walinuxagent.service'
-  - 'systemctl disable walinuxagent.service'
-  # disable cloud init on next boot (https://cloudinit.readthedocs.io/en/latest/topics/boot.html, https://askubuntu.com/a/1047618)
+  - [ sh, -c, "if test -b /dev/cdrom; then eject; fi" ]
+  - [ sh, -c, "if test -b /dev/sr0; then eject /dev/sr0; fi" ]
+$(if ($ImageFileName.Contains("azure")) { "
+    # dont start waagent service since it useful only for azure/scvmm
+  - [ systemctl, disable, walinuxagent.service]
+"})  # disable cloud init on next boot (https://cloudinit.readthedocs.io/en/latest/topics/boot.html, https://askubuntu.com/a/1047618)
   - [ sh, -c, touch /etc/cloud/cloud-init.disabled ]
   # set locale
-  - 'locale-gen en_US.UTF-8'
-  - 'update-locale LANG=en_US.UTF-8'
+  # cloud-init Bug 21.4.1: locale update prepends "LANG=" like in
+  # /etc/defaults/locale set and results into error
+  - [ locale-gen, "$($Locale).UTF-8" ]
+  - [ update-locale, "$($Locale).UTF-8" ]
+  # documented keyboard option, but not implemented ?
   # change keyboard layout, src: https://askubuntu.com/a/784816
-  - [ sh, -c, sed -i 's/XKBLAYOUT=\"\w*"/XKBLAYOUT=\"'us'\"/g' /etc/default/keyboard ]
-  # set timezone
-  - 'timedatectl set-timezone Europe/London'
+  - [ sh, -c, sed -i 's/XKBLAYOUT=\"\w*"/XKBLAYOUT=\"'$($KeyboardLayout)'\"/g' /etc/default/keyboard ]
   # Reactivate OpenSSH for further boots
   - rm -f /etc/ssh/sshd_not_to_be_run
 $(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
@@ -483,7 +531,6 @@ $(if (($NetAutoconfig -eq $false) -and (($NetConfigType -ieq "ENI") -or
                                         ($NetConfigType -ieq "ENI-file") -or
                                         ($NetConfigType -ieq "dhclient"))) { $networkconfig
 })
-
 manage_etc_hosts: true
 manage_resolv_conf: true
 
