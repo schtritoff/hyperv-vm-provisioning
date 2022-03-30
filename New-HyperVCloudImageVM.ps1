@@ -30,15 +30,21 @@ param(
   [string] $VMName = "CloudVm",
   [int] $VMGeneration = 1, # create gen1 hyper-v machine because of portability to Azure (https://docs.microsoft.com/en-us/azure/virtual-machines/windows/prepare-for-upload-vhd-image)
   [int] $VMProcessorCount = 1,
-  [bool] $DynamicMemoryEnabled = $false,
+  [bool] $VMDynamicMemoryEnabled = $false,
   [uint64] $VMMemoryStartupBytes = 1024MB,
-  [uint64] $MinimumBytes = $VMMemoryStartupBytes,
-  [uint64] $MaximumBytes = $VMMemoryStartupBytes,
+  [uint64] $VMMinimumBytes = $VMMemoryStartupBytes,
+  [uint64] $VMMaximumBytes = $VMMemoryStartupBytes,
   [uint64] $VHDSizeBytes = 16GB,
   [string] $VirtualSwitchName = $null,
   [string] $VMVlanID = $null,
   [string] $VMNativeVlanID = $null,
   [string] $VMAllowedVlanIDList = $null,
+  [switch] $VMVMQ = $false,
+  [switch] $VMDhcpGuard = $false,
+  [switch] $VMRouterGuard = $false,
+  [switch] $VMPassthru = $false,
+  [switch] $VMMacAddressSpoofing = $false,
+  [switch] $VMExposeVirtualizationExtensions = $false,
   [string] $VMVersion = "8.0", # version 8.0 for hyper-v 2016 compatibility , check all possible values with Get-VMHostSupportedVersion
   [string] $VMHostname = $VMName,
   [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
@@ -46,7 +52,7 @@ param(
   [string] $VMStoragePath = $null, # if not defined here Hyper-V settings path / fallback path is set below
   [bool] $UseAzure_Chassis_Asset_Tag = $false,
   [string] $DomainName = "domain.local",
-  [string] $StaticMacAddress = $null,
+  [string] $VMStaticMacAddress = $null,
   [string] $NetInterface = "eth0",
   [string] $NetAddress = $null,
   [string] $NetNetmask = $null,
@@ -76,11 +82,11 @@ $NetAutoconfig = (($null -eq $NetAddress) -or ($NetAddress -eq "")) -and
                  (($null -eq $NetNetmask) -or ($NetNetmask -eq "")) -and
                  (($null -eq $NetNetwork) -or ($NetNetwork -eq "")) -and
                  (($null -eq $NetGateway) -or ($NetGateway -eq "")) -and
-                 (($null -eq $StaticMacAddress) -or ($StaticMacAddress -eq ""))
+                 (($null -eq $VMStaticMacAddress) -or ($VMStaticMacAddress -eq ""))
 
 if ($NetAutoconfig -eq $false) {
   Write-Verbose "Given Network configuration - no checks done in script:"
-  Write-Verbose "StaticMacAddress: '$StaticMacAddress'"
+  Write-Verbose "VMStaticMacAddress: '$VMStaticMacAddress'"
   Write-Verbose "NetInterface:     '$NetInterface'"
   Write-Verbose "NetAddress:       '$NetAddress'"
   Write-Verbose "NetNetmask:       '$NetNetmask'"
@@ -338,7 +344,7 @@ config:
   - enabled
   - type: physical
     name: $NetInterface
-    $(if (($null -eq $StaticMacAddress) -or ($StaticMacAddress -eq "")) { "#" })mac_address: $StaticMacAddress
+    $(if (($null -eq $VMStaticMacAddress) -or ($VMStaticMacAddress -eq "")) { "#" })mac_address: $VMStaticMacAddress
     $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })subnets:
     $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })  - type: static
     $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })    address: $NetAddress
@@ -360,7 +366,7 @@ config: enabled
 ethernets:
   $($NetInterface):
     dhcp: $NetAutoconfig
-    #$(if (($null -eq $StaticMacAddress) -or ($StaticMacAddress -eq "")) { "#" })mac_address: $StaticMacAddress
+    #$(if (($null -eq $VMStaticMacAddress) -or ($VMStaticMacAddress -eq "")) { "#" })mac_address: $VMStaticMacAddress
     $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })addresses: $NetAddress
     $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })gateway4: $NetGateway
     nameservers:
@@ -373,7 +379,7 @@ ethernets:
 # inline-ENI network configuration
 network-interfaces: |
   iface $NetInterface inet static
-$(if (($null -ne $StaticMacAddress) -and ($StaticMacAddress -ne "")) { "  hwaddress ether $StaticMacAddress`n"
+$(if (($null -ne $VMStaticMacAddress) -and ($VMStaticMacAddress -ne "")) { "  hwaddress ether $VMStaticMacAddress`n"
 })$(if (($null -ne $NetAddress) -and ($NetAddress -ne "")) { "  address $NetAddress`n"
 })$(if (($null -ne $NetNetwork) -and ($NetNetwork -ne "")) { "  network $NetNetwork`n"
 })$(if (($null -ne $NetNetmask) -and ($NetNetmask -ne "")) { "  netmask $NetNetmask`n"
@@ -408,7 +414,7 @@ $(if (($null -ne $NetAddress) -and ($NetAddress -ne "")) { "          address $N
 })$(if (($null -ne $NetNetmask) -and ($NetNetmask -ne "")) { "          netmask $NetNetmask`n"
 })$(if (($null -ne $NetBroadcast) -and ($NetBroadcast -ne "")) { "          broadcast $Broadcast`n"
 })$(if (($null -ne $NetGateway) -and ($NetGateway -ne "")) { "          gateway $NetGateway`n"
-})$(if (($null -ne $StaticMacAddress) -and ($StaticMacAddress -ne "")) { "      hwaddress ether $StaticMacAddress`n"
+})$(if (($null -ne $VMStaticMacAddress) -and ($VMStaticMacAddress -ne "")) { "      hwaddress ether $VMStaticMacAddress`n"
 })
           dns-nameservers $($NameServers.Split(",") -join " ")
           dns-search $DomainName
@@ -829,10 +835,10 @@ $vm = new-vm -Name $VMName -MemoryStartupBytes $VMMemoryStartupBytes `
                -VHDPath "$VMDiskPath" -Generation $VMGeneration `
                -BootDevice VHD -Version $VMVersion | out-null
 Set-VMProcessor -VMName $VMName -Count $VMProcessorCount
-If ($DynamicMemoryEnabled) {
-  Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $DynamicMemoryEnabled -MaximumBytes $MaximumBytes -MinimumBytes $MinimumBytes
+If ($VMDynamicMemoryEnabled) {
+  Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $VMDynamicMemoryEnabled -MaximumBytes $VMMaximumBytes -MinimumBytes $VMMinimumBytes
 } else {
-  Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $DynamicMemoryEnabled
+  Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $VMDynamicMemoryEnabled
 }
 # make sure VM has DVD drive needed for provisioning
 if ($null -eq (Get-VMDvdDrive -VMName $VMName)) {
@@ -861,6 +867,13 @@ If (($null -ne $virtualSwitchName) -and ($virtualSwitchName -ne "")) {
   exit 1
 }
 
+if (($null -ne $VMStaticMacAddress) -and ($VMStaticMacAddress -ne "")) {
+  Write-Verbose "Setting static MAC address '$VMStaticMacAddress' on VMnet adapter..."
+  Set-VMNetworkAdapter -VMName $VMName -StaticMacAddress $VMStaticMacAddress
+} else {
+  Write-Verbose "Using default dynamic MAC address asignment."
+}
+
 $VMNetworkAdapter = Get-VMNetworkAdapter -VMName $VMName
 $VMNetworkAdapterName = $VMNetworkAdapter.Name
 If ((($null -ne $VMVlanID) -and ([int]($VMVlanID) -ne 0)) -or
@@ -881,11 +894,47 @@ If ((($null -ne $VMVlanID) -and ([int]($VMVlanID) -ne 0)) -or
   Write-Verbose "Let virtual network adapter '$VMNetworkAdapterName' untagged."
 }
 
-If (($null -ne $StaticMacAddress) -and ($StaticMacAddress -ne "")) {
-  Write-Verbose "Setting static MAC address '$StaticMacAddress' on VMnet adapter..."
-  Set-VMNetworkAdapter -VMName $VMName -StaticMacAddress $StaticMacAddress
+if ($VMVMQ) {
+    Write-Host "Enable Virtual Machine Queue (100)... " -NoNewline
+    Set-VMNetworkAdapter -VMName $VMName -VmqWeight 100
+    Write-Host -ForegroundColor Green " Done."
+}
+
+if ($VMDhcpGuard) {
+    Write-Host "Enable DHCP Guard... " -NoNewline
+    Set-VMNetworkAdapter -VMName $VMName -DhcpGuard On
+    Write-Host -ForegroundColor Green " Done."
+}
+
+if ($VMRouterGuard) {
+    Write-Host "Enable Router Guard... " -NoNewline
+    Set-VMNetworkAdapter -VMName $VMName -RouterGuard On
+    Write-Host -ForegroundColor Green " Done."
+}
+
+if ($VMAllowTeaming) {
+    Write-Host "Enable Allow Teaming... " -NoNewline
+    Set-VMNetworkAdapter -VMName $VMName -AllowTeaming On
+    Write-Host -ForegroundColor Green " Done."
+}
+
+if ($VMPassthru) {
+    Write-Host "Enable Passthru... " -NoNewline
+    Set-VMNetworkAdapter -VMName $VMName -Passthru
+    Write-Host -ForegroundColor Green " Done."
+}
+
+if ($VMMacAddressSpoofing) {
+  Write-Verbose "Enable MAC address Spoofing on VMnet adapter..."
+  Set-VMNetworkAdapter -VMName $VMName -MacAddressSpoofing On
 } else {
   Write-Verbose "Using default dynamic MAC address asignment."
+}
+
+if ($VMExposeVirtualizationExtensions) {
+  Write-Host "Expose Virtualization Extensions to Guest ..."
+  Set-VMProcessor -VMName $VMName -ExposeVirtualizationExtensions $true
+  Write-Host -ForegroundColor Green " Done."
 }
 
 # hyper-v gen2 specific features
