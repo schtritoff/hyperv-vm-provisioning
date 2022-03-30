@@ -43,6 +43,9 @@ param(
   [switch] $VMDhcpGuard = $false,
   [switch] $VMRouterGuard = $false,
   [switch] $VMPassthru = $false,
+  #[switch] $VMMinimumBandwidthAbsolute = $null,
+  #[switch] $VMMinimumBandwidthWeight = $null,
+  #[switch] $VMMaximumBandwidth = $null,
   [switch] $VMMacAddressSpoofing = $false,
   [switch] $VMExposeVirtualizationExtensions = $false,
   [string] $VMVersion = "8.0", # version 8.0 for hyper-v 2016 compatibility , check all possible values with Get-VMHostSupportedVersion
@@ -923,6 +926,24 @@ if ($VMPassthru) {
     Set-VMNetworkAdapter -VMName $VMName -Passthru
     Write-Host -ForegroundColor Green " Done."
 }
+
+#if (($null -ne $VMMaximumBandwidth) -and ($([int]($VMMaximumBandwidth)) -gt 0)) {
+#  if (($null -ne $VMMinimumBandwidthWeight) -and ($([int]($VMMinimumBandwidthWeight)) -gt 0)) {
+#    Write-Host "Set maximum bandwith to $([int]($VMMaximumBandwidth)) with minimum bandwidth weigth $([int]($VMMinimumBandwidthWeight))" -NoNewline
+#    Set-VMNetworkAdapter -VMName $VMName -MaximumBandwidth $([int]($VMMaximumBandwidth)) `n
+#                                         -MinimumBandwidthWeight $([int]($VMMinimumBandwidthWeight))
+#  } elseif (($null -ne $VMMinimumBandwidthAbsolute) -and ($([int]($VMMinimumBandwidthAbsolute)) -gt 0) `
+#           -and ($([int]($VMMaximumBandwidth)) -gt ($([int]($VMMinimumBandwidthAbsolute))))) {
+#    Write-Host "Set maximum bandwith to $([int]($VMMaximumBandwidth)) with absolute minimum bandwidth $([int]($VMMinimumBandwidthAbsolute)) " -NoNewline
+#    Set-VMNetworkAdapter -VMName $VMName -MaximumBandwidth $([int]($VMMaximumBandwidth)) `n
+#                                         -MinimumBandwidthAbsolute $([int]($VMMinimumBandwidthAbsolute))
+#  } else {
+#    Write-Warning "Wrong or missing bandwith parameterrs; given values are:"
+#    Write-Warning "    MaximumBandwidth:         $([int]($VMMaximumBandwidth))"
+#    Write-Warning "    MinimumBandwidthAbsolute: $([int]($VMMinimumBandwidthAbsolute))"
+#    Write-Warning "    MinimumBandwidthWeight:   $([int]($VMMinimumBandwidthWeight))"
+#  }
+#}
 
 if ($VMMacAddressSpoofing) {
   Write-Verbose "Enable MAC address Spoofing on VMnet adapter..."
