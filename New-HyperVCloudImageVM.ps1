@@ -465,7 +465,6 @@ if ($null -ne $network_write_files) {
   Write-Verbose "Network-Config for write_files:"
   Write-Verbose $network_write_files
   Write-Verbose ""
-
 }
 
 # userdata for cloud-init, https://cloudinit.readthedocs.io/en/latest/topics/examples.html
@@ -521,18 +520,14 @@ ssh_pwauth: true      # true: allow login with password; else only with setup pu
 #  - ssh-rsa AAAAB... comment
 
 # bootcmd can be setup like runcmd but would run at very early stage
-# on every cloud-init assisted boot if not prepended by command "cloud-init-per":
-#bootcmd:
-  # - [ cloud-init-per, sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
+# on every cloud-init assisted boot if not prepended by command "cloud-init-per once|instance|always":
+$(if ($NetAutoconfig -eq $true) { "#" })bootcmd:
+$(if ($NetAutoconfig -eq $true) { "#" })  - [ cloud-init-per, once, fix-dhcp, sh, -c, sed -e 's/#timeout 60;/timeout 1;/g' -i /etc/dhcp/dhclient.conf ]
 runcmd:
-  # maybe condition OS based for Debian only and not ENI-file based?
 $(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
-  "  # Comment out cloud-init based dhcp configuration for $NetInterface
+"  # maybe condition OS based for Debian only and not ENI-file based?
+  # Comment out cloud-init based dhcp configuration for $NetInterface
   - [ rm, /etc/network/interfaces.d/50-cloud-init ]
-"})$(if ($NetAutoconfig -eq $false) {
-  "  # Restart network interface to avoid 120s timeout wait of dhclient
-  - [ ifdown, $NetInterface ]
-  - [ ifup, $NetInterface ]
 "})  # - [ sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
   # force password change on 1st boot
   # - [ chage, -d, 0, $($GuestAdminUsername) ]
@@ -598,7 +593,7 @@ write_files:
       # Debian based systems
       if_file=`"/etc/network/interrfaces.d/*`"
 
-      dhcp=`$(grep `"dhcp`" $if_file 2>/dev/null)
+      dhcp=`$(grep `"dhcp`" `$if_file 2>/dev/null)
 
       if [ "$dhcp" != "" ];
       then
@@ -607,7 +602,7 @@ write_files:
       echo "Disabled"
       fi
     path: /usr/libexec/hypervkvpd/hv_get_dhcp_info
-$(if ($null -ne $network_write_files) { $networkconfig
+$(if ($null -ne $network_write_files) { $network_write_files
 })
 
 manage_etc_hosts: true
