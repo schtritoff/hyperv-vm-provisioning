@@ -332,6 +332,7 @@ if ($NetAutoconfig -eq $false) {
   }
 }
 $networkconfig = $null
+$network_write_files = $null
 if ($NetAutoconfig -eq $false) {
   Write-Verbose "Network autoconfig disabled; preparing networkconfig."
   if ($NetConfigType -ieq "v1") {
@@ -395,9 +396,8 @@ $(if (($null -ne $VMStaticMacAddress) -and ($VMStaticMacAddress -ne "")) { "  hw
   } elseif ($NetConfigType -ieq "ENI-file") {
     Write-Verbose "ENI-file requested ..."
     # direct network configuration setup
-    $networkconfig = @"
-# Static IP address
-write_files:
+    $network_write_files = @"
+  # Static IP address
   - content: |
       # Configuration file for ENI networkmanager
       # This file describes the network interfaces available on your system
@@ -425,12 +425,8 @@ $(if (($null -ne $NetAddress) -and ($NetAddress -ne "")) { "          address $N
 "@
   } elseif ($NetConfigType -ieq "dhclient") {
     Write-Verbose "dhclient requested ..."
-    $networkconfig = @"
-# Static IP address
-write_files:
-  - content: |
-      Touch file to disable sshd restart while doing cloud-init
-    path: /etc/ssh/sshd_not_to_be_run
+    $network_write_files = @"
+  # Static IP address
   - content: |
       # Configuration file for /sbin/dhclient.
       send host-name = gethostname();
@@ -464,6 +460,14 @@ if ($null -ne $networkconfig) {
   Write-Verbose ""
 }
 
+if ($null -ne $network_write_files) {
+  Write-Verbose ""
+  Write-Verbose "Network-Config for write_files:"
+  Write-Verbose $network_write_files
+  Write-Verbose ""
+
+}
+
 # userdata for cloud-init, https://cloudinit.readthedocs.io/en/latest/topics/examples.html
 $userdata = @"
 #cloud-config
@@ -481,6 +485,10 @@ growpart:
   mode: auto
   devices: [/]
   ignore_growroot_disabled: false
+
+#apt:
+#  http_proxy: http://host:port
+#  https_proxy: http://host:port
 
 apt_preserve_sources_list: true
 package_update: true
@@ -505,7 +513,9 @@ system_info:
 
 password: $($GuestAdminPassword)
 chpasswd: { expire: false }
-ssh_pwauth: true
+
+disable_root: true    # true: notify default user account / false: allow root ssh login
+ssh_pwauth: true      # true: allow login with password; else only with setup pubkey(s)
 
 #ssh_authorized_keys:
 #  - ssh-rsa AAAAB... comment
@@ -515,7 +525,15 @@ ssh_pwauth: true
 #bootcmd:
   # - [ cloud-init-per, sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
 runcmd:
-  # - [ sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
+  # maybe condition OS based for Debian only and not ENI-file based?
+$(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
+  "  # Comment out cloud-init based dhcp configuration for $NetInterface
+  - [ rm, /etc/network/interfaces.d/50-cloud-init ]
+"})$(if ($NetAutoconfig -eq $false) {
+  "  # Restart network interface to avoid 120s timeout wait of dhclient
+  - [ ifdown, $NetInterface ]
+  - [ ifup, $NetInterface ]
+"})  # - [ sh, -c, echo "127.0.0.1 localhost" >> /etc/hosts ]
   # force password change on 1st boot
   # - [ chage, -d, 0, $($GuestAdminUsername) ]
   # remove metadata iso
@@ -534,17 +552,64 @@ $(if ($ImageFileName.Contains("azure")) { "
   # documented keyboard option, but not implemented ?
   # change keyboard layout, src: https://askubuntu.com/a/784816
   - [ sh, -c, sed -i 's/XKBLAYOUT=\"\w*"/XKBLAYOUT=\"'$($KeyboardLayout)'\"/g' /etc/default/keyboard ]
-  # Reactivate OpenSSH for further boots
-  - rm -f /etc/ssh/sshd_not_to_be_run
-$(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
-  "  # Comment out cloud-init based dhcp configuration for $NetInterface
-  - sed  -e 's/^/#/' -i /etc/network/interfaces.d/50-cloud-init"
+
+write_files:
+  # hyperv-daemons package in mosts distros is missing this file and spamming syslog:
+  # https://github.com/torvalds/linux/blob/master/tools/hv/hv_get_dns_info.sh
+  - content: |
+      #!/bin/bash
+
+      # This example script parses /etc/resolv.conf to retrive DNS information.
+      # In the interest of keeping the KVP daemon code free of distro specific
+      # information; the kvp daemon code invokes this external script to gather
+      # DNS information.
+      # This script is expected to print the nameserver values to stdout.
+      # Each Distro is expected to implement this script in a distro specific
+      # fashion. For instance on Distros that ship with Network Manager enabled,
+      # this script can be based on the Network Manager APIs for retrieving DNS
+      # entries.
+
+      cat /etc/resolv.conf 2>/dev/null | awk '/^nameserver/ { print $2 }'
+    path: /usr/libexec/hypervkvpd/hv_get_dns_info
+  # hyperv-daemons package in mosts distros is missing this file and spamming syslog:
+  # https://github.com/torvalds/linux/blob/master/tools/hv/hv_get_dhcp_info.sh
+  - content: |
+      #!/bin/bash
+      # SPDX-License-Identifier: GPL-2.0
+
+      # This example script retrieves the DHCP state of a given interface.
+      # In the interest of keeping the KVP daemon code free of distro specific
+      # information; the kvp daemon code invokes this external script to gather
+      # DHCP setting for the specific interface.
+      #
+      # Input: Name of the interface
+      #
+      # Output: The script prints the string "Enabled" to stdout to indicate
+      #	that DHCP is enabled on the interface. If DHCP is not enabled,
+      #	the script prints the string "Disabled" to stdout.
+      #
+      # Each Distro is expected to implement this script in a distro specific
+      # fashion. For instance, on Distros that ship with Network Manager enabled,
+      # this script can be based on the Network Manager APIs for retrieving DHCP
+      # information.
+
+      # RedHat based systems
+      #if_file="/etc/sysconfig/network-scripts/ifcfg-"$1
+      # Debian based systems
+      if_file=`"/etc/network/interrfaces.d/*`"
+
+      dhcp=`$(grep `"dhcp`" $if_file 2>/dev/null)
+
+      if [ "$dhcp" != "" ];
+      then
+      echo "Enabled"
+      else
+      echo "Disabled"
+      fi
+    path: /usr/libexec/hypervkvpd/hv_get_dhcp_info
+$(if ($null -ne $network_write_files) { $networkconfig
 })
 
-$(if (($NetAutoconfig -eq $false) -and (($NetConfigType -ieq "ENI") -or
-                                        ($NetConfigType -ieq "ENI-file") -or
-                                        ($NetConfigType -ieq "dhclient"))) { $networkconfig
-})
 manage_etc_hosts: true
 manage_resolv_conf: true
 
@@ -964,8 +1029,13 @@ if ($VMGeneration -eq 2) {
   # configure secure boot, src: https://www.altaro.com/hyper-v/hyper-v-2016-support-linux-secure-boot/
   Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplateId ([guid]'272e7447-90a4-4563-a4b9-8e4ab00526ce')
 
-  # Ubuntu 18.04+ supports enhanced session and so Debian 10/11
-  Set-VM -VMName $VMName -EnhancedSessionTransportType HvSocket
+  if ($(Get-VMHost).EnableEnhancedSessionMode -eq $true) {
+    # Ubuntu 18.04+ supports enhanced session and so Debian 10/11
+    Write-Verbose "Enable enhanced session mode..."
+    Set-VM -VMName $VMName -EnhancedSessionTransportType HvSocket
+  } else {
+    Write-Verbose "Enhanced session mode not enabled because host has not activated support for it."
+  }
 
   # For copy&paste service (hv_fcopy_daemon) between host and guest we need also this
   # guest service interface activation which has sadly language dependent setup:
