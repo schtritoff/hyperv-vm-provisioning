@@ -53,7 +53,7 @@ param(
   [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
   [string] $VMMachinePath = $null, # if not defined here default Virtal Machine path is used
   [string] $VMStoragePath = $null, # if not defined here Hyper-V settings path / fallback path is set below
-  [bool] $UseAzure_Chassis_Asset_Tag = $false,
+  [switch] $SkipAzureImageTypeCheck = $false,
   [string] $DomainName = "domain.local",
   [string] $VMStaticMacAddress = $null,
   [string] $NetInterface = "eth0",
@@ -143,6 +143,9 @@ $qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img\qemu-img.exe"
 
 # Windows version of tar for extracting tar.gz files, src: https://github.com/libarchive/libarchive
 $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar.exe"
+
+# Does the image has azure cloud init? https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
+$AzureImageTypeDetected = $false
 
 # Update this to the release of Image that you want
 # But Azure images can't be used because the waagent is trying to find ephemeral disk
@@ -241,6 +244,15 @@ Switch ($ImageVersion) {
 
 $ImagePath = "$($ImageUrlRoot)$($ImageFileName)"
 $ImageHashPath = "$($ImageUrlRoot)$($ImageHashFileName)"
+
+# use Azure specifics only if such cloud image is chosen
+if (-not $SkipAzureImageTypeCheck) {
+  Write-Verbose "Checking if image type is Azure..."
+  if ($ImageFileName.Contains("azure")) {
+    $AzureImageTypeDetected = $true
+    Write-Verbose "Azure image detected: $ImageFileName"
+  }
+}
 
 if ($null -ne $VMMachine_StoragePath) {
   $VMMachinePath = $VMMachine_StoragePath
@@ -534,7 +546,7 @@ $(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
   # remove metadata iso
   - [ sh, -c, "if test -b /dev/cdrom; then eject; fi" ]
   - [ sh, -c, "if test -b /dev/sr0; then eject /dev/sr0; fi" ]
-$(if ($ImageFileName.Contains("azure")) { "
+$(if ($AzureImageTypeDetected) { "
     # dont start waagent service since it useful only for azure/scvmm
   - [ systemctl, disable, walinuxagent.service]
 "})  # disable cloud init on next boot (https://cloudinit.readthedocs.io/en/latest/topics/boot.html, https://askubuntu.com/a/1047618)
@@ -632,7 +644,7 @@ if (-not [string]::IsNullOrEmpty($CustomUserDataYamlFile) -and (Test-Path $Custo
   $userdata = $ExecutionContext.InvokeCommand.ExpandString( $(Get-Content $CustomUserDataYamlFile -Raw) ) # parse variables
 }
 
-if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true)) {
+if ($AzureImageTypeDetected) {
   # cloud-init configuration that will be merged, see https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
   $dscfg = @"
 datasource:
@@ -715,7 +727,7 @@ if (($NetAutoconfig -eq $false) -and
   Set-Content "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") -Encoding Byte
 }
 Set-Content "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") -Encoding Byte
-if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true)) {
+if ($AzureImageTypeDetected) {
   $ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
 }
 
@@ -726,7 +738,7 @@ Write-Host "Creating metadata iso for VM provisioning - " -NoNewline
 $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
-if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true)) {
+if ($AzureImageTypeDetected) {
   <# azure #>
   Write-Host "Azure format..." -NoNewline
   Start-Process `
@@ -735,7 +747,7 @@ if ($ImageFileName.Contains("azure") -and ($UseAzure_Chassis_Asset_Tag -eq $true
 	  -Wait -NoNewWindow `
 	  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
     -RedirectStandardError "$($tempPath)\oscdimg-error.log"
-} elseif ($ImageFileName.Contains("nocloud") -or ($UseAzure_Chassis_Asset_Tag -eq $false)) {
+} elseif ($ImageFileName.Contains("nocloud") -or ($AzureImageTypeDetected -eq $false)) {
   <# NoCloud #>
   Write-Host "NoCloud format.." -NoNewline
   Start-Process `
@@ -1049,7 +1061,7 @@ if ($null -ne (Get-Command Hyper-V\Set-VM).Parameters["AutomaticCheckpointsEnabl
 
 Write-Host -ForegroundColor Green " Done."
 
-if ($UseAzure_Chassis_Asset_Tag -eq $true) {
+if ($AzureImageTypeDetected) {
   # set chassistag to "Azure chassis tag" as documented in https://git.launchpad.net/cloud-init/tree/cloudinit/sources/DataSourceAzure.py#n51
   Write-Host "Set Azure chasis tag ..." -NoNewline
   # https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
