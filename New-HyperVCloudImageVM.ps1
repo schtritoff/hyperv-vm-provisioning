@@ -254,32 +254,38 @@ if (-not $SkipAzureImageTypeCheck) {
   }
 }
 
-if ($null -ne $VMMachine_StoragePath) {
+# Set path for storing all VM files
+if (-not [string]::IsNullOrEmpty($VMMachine_StoragePath)) {
   $VMMachinePath = $VMMachine_StoragePath
   $VMStoragePath = "$VMMachine_StoragePath\$VMName\Virtual Hard Disks"
+  Write-Verbose "VMStoragePath set: $VMStoragePath"
 }
 
 # Get default Virtual Machine path (requires administrative privileges)
-if (-not $VMMachinePath) {
+if ([string]::IsNullOrEmpty($VMMachinePath)) {
   $vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
   $vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
   $VMMachinePath = $vmmsSettings.DefaultVirtualMachinePath
   # fallback
   if (-not $VMMachinePath) {
+    Write-Warning "Couldn't obtain VMMachinePath from Hyper-V settings via WMI"
     $VMMachinePath = "C:\ProgramData\Microsoft\Windows\Hyper-V"
   }
+  Write-Verbose "VMMachinePath set: $VMMachinePath"
 }
 if (!(test-path $VMMachinePath)) {mkdir -Path $VMMachinePath | out-null}
 
 # Get default Virtual Hard Disk path (requires administrative privileges)
-if (-not $VMStoragePath) {
+if ([string]::IsNullOrEmpty($VMStoragePath)) {
   $vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
   $vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
   $VMStoragePath = $vmmsSettings.DefaultVirtualHardDiskPath
   # fallback
   if (-not $VMStoragePath) {
+    Write-Warning "Couldn't obtain VMStoragePath from Hyper-V settings via WMI"
     $VMStoragePath = "C:\Users\Public\Documents\Hyper-V\Virtual Hard Disks"
   }
+  Write-Verbose "VMStoragePath set: $VMStoragePath"
 }
 if (!(test-path $VMStoragePath)) {mkdir -Path $VMStoragePath | out-null}
 
