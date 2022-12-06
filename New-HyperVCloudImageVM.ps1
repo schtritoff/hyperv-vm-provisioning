@@ -860,7 +860,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
     }
     Write-Host -ForegroundColor Green " Done."
 
-    Write-Host 'Convert VHD fixed to VDH dynamic...' -NoNewline
+    Write-Host 'Convert VHD fixed to VHD dynamic...' -NoNewline
     try {
       Convert-VHD -Path "$($ImageCachePath)\$ImageFileName.vhd" -DestinationPath "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -VHDType Dynamic -DeleteSource
       Write-Host -ForegroundColor Green " Done."
@@ -1107,14 +1107,13 @@ Write-Host -ForegroundColor Green " Done."
 if ($ShowSerialConsoleWindow) {
   # start putty with serial connection to newly created VM
   # TODO alternative: https://stackoverflow.com/a/48661245/1155121
-  $env:PATH = "D:\share\programi\putty;" + $env:PATH
   try {
     Get-Command "putty" | out-null
     start-sleep -seconds 2
     & "PuTTY" -serial "\\.\pipe\$VMName-com1" -sercfg "115200,8,n,1,N"
   }
   catch {
-    Write-Verbose "putty not available"
+    Write-Warning "putty not available"
   }
 }
 
