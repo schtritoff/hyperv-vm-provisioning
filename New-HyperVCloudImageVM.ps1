@@ -771,12 +771,12 @@ Write-Verbose "Metadata iso written"
 Write-Host -ForegroundColor Green " Done."
 
 
-# check if local cached cloud image is the most recent one
+# check if local cached cloud image is the target one per $stamp
 if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)")) {
   try {
     # If we do not have a matching image - delete the old ones and download the new one
     Write-Host 'Removing old images from cache...' -NoNewline
-    Remove-Item "$($ImageCachePath)" -include "$($ImageOS)-*.vhd*", "$($ImageOS)-*.tar.*"
+    Remove-Item "$($ImageCachePath)" -Exclude 'baseimagetimestamp.txt',"$($ImageOS)-$($stamp).*" -Recurse -Force
     Write-Host -ForegroundColor Green " Done."
 
     # get headers for content length
@@ -825,9 +825,9 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
 if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
   try {
     Write-Host 'Expanding archive...' -NoNewline
-    if ($ImageFileExtension.Contains(".zip")) {
+    if ($ImageFileExtension.EndsWith("zip")) {
       Expand-Archive -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)" -DestinationPath "$ImageCachePath" -Force
-    } elseif (($ImageFileExtension.Contains(".tar.gz")) -or ($ImageFileExtension.Contains("tar.xz"))) {
+    } elseif (($ImageFileExtension.EndsWith("tar.gz")) -or ($ImageFileExtension.EndsWith("tar.xz"))) {
       # using bsdtar - src: https://github.com/libarchive/libarchive/
       # src: https://unix.stackexchange.com/a/23746/353700
       #& $bsdtarPath "-x -C `"$($ImageCachePath)`" -f `"$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)`""
