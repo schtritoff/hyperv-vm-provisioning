@@ -160,15 +160,15 @@ Switch ($ImageVersion) {
   "bionic" {
     $ImageOS = "ubuntu"
     $ImageVersionName = "bionic"
+    $ImageVersion = "18.04"
     $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # http://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64-azure.vhd.zip
     $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersion/$ImageRelease/" # latest
-    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64-azure"
-    $ImageFileExtension = "vhd.tar.gz"
+    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
+    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
+    $ImageFileExtension = "img"
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "vhd.manifest"
+    $ImageManifestSuffix = "manifest"
   }
   "20.04" {
     $_ = "focal"
@@ -177,12 +177,47 @@ Switch ($ImageVersion) {
   "focal" {
     $ImageOS = "ubuntu"
     $ImageVersionName = "focal"
+    $ImageVersion = "20.04"
     $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # http://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64-azure.vhd.zip
     $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersion/$ImageRelease/" # latest
+    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
+    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
+    $ImageFileExtension = "img"
+    # Manifest file is used for version check based on last modified HTTP header
+    $ImageHashFileName = "SHA256SUMS"
+    $ImageManifestSuffix = "manifest"
+  }
+  "22.04" {
+    $_ = "jammy"
+    $ImageVersion = "22.04"
+  }
+  "jammy" {
+    $ImageOS = "ubuntu"
+    $ImageVersionName = "jammy"
+    $ImageVersion = "22.04"
+    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
+    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
+    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
+    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
+    $ImageFileExtension = "img"
+    # Manifest file is used for version check based on last modified HTTP header
+    $ImageHashFileName = "SHA256SUMS"
+    $ImageManifestSuffix = "manifest"
+  }
+  "22.04-azure" {
+    $_ = "jammy-azure"
+    $ImageVersion = "22.04-azure"
+  }
+  "jammy-azure" {
+    $ImageOS = "ubuntu"
+    $ImageVersion = "22.04"
+    $ImageVersionName = "jammy"
+    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
+    # https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-azure.vhd.tar.gz
+    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
+    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
     $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64-azure" # should contain "vhd.*" version
-    $ImageFileExtension = "vhd.zip" # or "vhd.tar.gz" on older releases
+    $ImageFileExtension = "vhd.tar.gz" # or "vhd.zip" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestSuffix = "vhd.manifest"
