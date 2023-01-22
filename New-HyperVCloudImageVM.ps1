@@ -53,7 +53,7 @@ param(
   [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
   [string] $VMMachinePath = $null, # if not defined here default Virtal Machine path is used
   [string] $VMStoragePath = $null, # if not defined here Hyper-V settings path / fallback path is set below
-  [switch] $SkipAzureImageTypeCheck = $false,
+  [bool] $UseAzureDataSource = $false,
   [string] $DomainName = "domain.local",
   [string] $VMStaticMacAddress = $null,
   [string] $NetInterface = "eth0",
@@ -144,9 +144,6 @@ $qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img\qemu-img.exe"
 # Windows version of tar for extracting tar.gz files, src: https://github.com/libarchive/libarchive
 $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar.exe"
 
-# Does the image has azure cloud init? https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
-$AzureImageTypeDetected = $false
-
 # Update this to the release of Image that you want
 # But Azure images can't be used because the waagent is trying to find ephemeral disk
 # and it's searching causing 20 / 40 minutes minutes delay for 1st boot
@@ -209,6 +206,7 @@ Switch ($ImageVersion) {
     $ImageVersion = "22.04-azure"
   }
   "jammy-azure" {
+    $UseAzureDataSource = $true
     $ImageOS = "ubuntu"
     $ImageVersion = "22.04"
     $ImageVersionName = "jammy"
@@ -281,12 +279,8 @@ $ImagePath = "$($ImageUrlRoot)$($ImageFileName)"
 $ImageHashPath = "$($ImageUrlRoot)$($ImageHashFileName)"
 
 # use Azure specifics only if such cloud image is chosen
-if (-not $SkipAzureImageTypeCheck) {
-  Write-Verbose "Checking if image type is Azure..."
-  if ($ImageFileName.Contains("azure")) {
-    $AzureImageTypeDetected = $true
-    Write-Verbose "Azure image detected: $ImageFileName"
-  }
+if ($UseAzureDataSource) {
+  Write-Verbose "Using Azure data source for cloud init in: $ImageFileName"
 }
 
 # Set path for storing all VM files
@@ -578,7 +572,7 @@ $(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
   # remove metadata iso
   - [ sh, -c, "if test -b /dev/cdrom; then eject; fi" ]
   - [ sh, -c, "if test -b /dev/sr0; then eject /dev/sr0; fi" ]
-$(if ($AzureImageTypeDetected) { "
+$(if ($UseAzureDataSource) { "
     # dont start waagent service since it useful only for azure/scvmm
   - [ systemctl, disable, walinuxagent.service]
 "})  # disable cloud init on next boot (https://cloudinit.readthedocs.io/en/latest/topics/boot.html, https://askubuntu.com/a/1047618)
@@ -676,7 +670,7 @@ if (-not [string]::IsNullOrEmpty($CustomUserDataYamlFile) -and (Test-Path $Custo
   $userdata = $ExecutionContext.InvokeCommand.ExpandString( $(Get-Content $CustomUserDataYamlFile -Raw) ) # parse variables
 }
 
-if ($AzureImageTypeDetected) {
+if ($UseAzureDataSource) {
   # cloud-init configuration that will be merged, see https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
   $dscfg = @"
 datasource:
@@ -713,25 +707,25 @@ datasource:
         <ns1:UserPassword>$($GuestAdminPassword)</ns1:UserPassword>
         <ns1:DisableSshPasswordAuthentication>false</ns1:DisableSshPasswordAuthentication>
         <ns1:CustomData>$([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($userdata)))</ns1:CustomData>
-    <dscfg>$([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($dscfg)))</dscfg>
-    <!-- TODO add ssh key provisioning support -->
-    <!--
-        <SSH>
-          <PublicKeys>
-            <PublicKey>
-              <Fingerprint>EB0C0AB4B2D5FC35F2F0658D19F44C8283E2DD62</Fingerprint>
-              <Path>$HOME/UserName/.ssh/authorized_keys</Path>
-              <Value>ssh-rsa AAAANOTAREALKEY== foo@bar.local</Value>
-            </PublicKey>
-          </PublicKeys>
-          <KeyPairs>
-            <KeyPair>
-              <Fingerprint>EB0C0AB4B2D5FC35F2F0658D19F44C8283E2DD62</Fingerprint>
-              <Path>$HOME/UserName/.ssh/id_rsa</Path>
-            </KeyPair>
-          </KeyPairs>
-        </SSH>
-    -->
+        <dscfg>$([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($dscfg)))</dscfg>
+        <!-- TODO add ssh key provisioning support -->
+        <!--
+            <SSH>
+              <PublicKeys>
+                <PublicKey>
+                  <Fingerprint>EB0C0AB4B2D5FC35F2F0658D19F44C8283E2DD62</Fingerprint>
+                  <Path>$HOME/UserName/.ssh/authorized_keys</Path>
+                  <Value>ssh-rsa AAAANOTAREALKEY== foo@bar.local</Value>
+                </PublicKey>
+              </PublicKeys>
+              <KeyPairs>
+                <KeyPair>
+                  <Fingerprint>EB0C0AB4B2D5FC35F2F0658D19F44C8283E2DD62</Fingerprint>
+                  <Path>$HOME/UserName/.ssh/id_rsa</Path>
+                </KeyPair>
+              </KeyPairs>
+            </SSH>
+        -->
     </ns1:LinuxProvisioningConfigurationSet>
   </ns1:ProvisioningSection>
 
@@ -759,27 +753,26 @@ if (($NetAutoconfig -eq $false) -and
   Set-Content "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") -Encoding Byte
 }
 Set-Content "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") -Encoding Byte
-if ($AzureImageTypeDetected) {
+if ($UseAzureDataSource) {
   $ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
 }
 
 # Create meta data ISO image, src: https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
-#,"-u1","-udfver200"
-#& $oscdimgPath "$($tempPath)\Bits" "$($metaDataIso).2.iso" -u2 -udfver200
+# both azure and nocloud support same cdrom filesystem https://github.com/canonical/cloud-init/blob/606a0a7c278d8c93170f0b5fb1ce149be3349435/cloudinit/sources/DataSourceAzure.py#L1972
 Write-Host "Creating metadata iso for VM provisioning - " -NoNewline
 $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
-if ($AzureImageTypeDetected) {
+if ($UseAzureDataSource) {
   <# azure #>
   Write-Host "Azure format..." -NoNewline
+#    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-u2","-udfver200" `
   Start-Process `
-	  -FilePath $oscdimgPath `
-    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-u2","-udfver200" `
-	  -Wait -NoNewWindow `
-	  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
-    -RedirectStandardError "$($tempPath)\oscdimg-error.log"
-} elseif ($ImageFileName.Contains("nocloud") -or ($AzureImageTypeDetected -eq $false)) {
+    -FilePath $oscdimgPath `
+    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-j2" `
+    -Wait -NoNewWindow `
+    -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
+} elseif ($ImageFileName.Contains("nocloud") -or ($UseAzureDataSource -eq $false)) {
   <# NoCloud #>
   Write-Host "NoCloud format.." -NoNewline
   Start-Process `
@@ -1122,16 +1115,21 @@ if ($null -ne (Get-Command Hyper-V\Set-VM).Parameters["AutomaticCheckpointsEnabl
 
 Write-Host -ForegroundColor Green " Done."
 
-if ($AzureImageTypeDetected) {
-  # set chassistag to "Azure chassis tag" as documented in https://git.launchpad.net/cloud-init/tree/cloudinit/sources/DataSourceAzure.py#n51
-  Write-Host "Set Azure chasis tag ..." -NoNewline
+# https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
+Write-Host "Set SMBIOS serial number ..."
+$vmserial_smbios = $VmMachineId
+if ($UseAzureDataSource) {
+  # set chassis asset tag to Azure constant as documented in https://github.com/canonical/cloud-init/blob/5e6ecc615318b48e2b14c2fd1f78571522848b4e/cloudinit/sources/helpers/azure.py#L1082
+  Write-Host "Set Azure chasis asset tag ..." -NoNewline
   # https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
   & .\Set-VMAdvancedSettings.ps1 -VM $VMName -ChassisAssetTag '7783-7084-3265-9085-8269-3286-77' -Force -Verbose:$verbose
   Write-Host -ForegroundColor Green " Done."
-}
 
-Write-Host "Set BIOS and chasis serial number to machine ID $VmMachineId ..." -NoNewline
-& .\Set-VMAdvancedSettings.ps1 -VM $VMName -BIOSSerialNumber $VmMachineId -ChassisSerialNumber $vmMachineId -Force -Verbose:$verbose
+  # also try to enable NoCloud via SMBIOS  https://cloudinit.readthedocs.io/en/22.4.2/topics/datasources/nocloud.html
+  $vmserial_smbios = 'ds=nocloud'
+}
+Write-Host "SMBIOS SN: $vmserial_smbios"
+& .\Set-VMAdvancedSettings.ps1 -VM $VMName -BIOSSerialNumber $vmserial_smbios -ChassisSerialNumber $vmserial_smbios -Force -Verbose:$verbose
 Write-Host -ForegroundColor Green " Done."
 
 # redirect com port to pipe for VM serial output, src: https://superuser.com/a/1276263/145585
