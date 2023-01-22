@@ -69,7 +69,7 @@ param(
   [string] $Locale = "en_US", # "en_US.UTF-8",
   [string] $TimeZone = "UTC", # UTC or continental zones of IANA DB like: Europe/Berlin
   [string] $CustomUserDataYamlFile,
-  [string] $GuestAdminUsername = "user",
+  [string] $GuestAdminUsername = "admin",
   [string] $GuestAdminPassword = "Passw0rd",
   [string] $ImageVersion = "20.04", # $ImageName ="focal" # 20.04 LTS , $ImageName="bionic" # 18.04 LTS
   [string] $ImageRelease = "release", # default option is get latest but could be fixed to some specific version for example "release-20210413"

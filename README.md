@@ -12,11 +12,11 @@
 
 ## Example usage
 ```powershell
-.\New-UbuntuCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "ubuntu-1" -UbuntuVersion "20.04" -VirtualSwitchName "SW01" -VMGeneration 2
+.\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "ubuntu-1" -ImageVersion "20.04" -VMGeneration 2
 ```
-Wait for image download and after starting VM some **20 minutes** for the first boot. Quite a time but cloud-init `DataSourceAzure` seems to wait that long for Azure IMDS reply before giving up and falling back to provising using provided userdata from CD drive.
+Wait for image download and after starting VM some **20 minutes** for the first boot. Quite a time but cloud-init `DataSourceAzure` seems to wait that long for Azure IMDS reply before giving up and falling back to provising using provided userdata from CD drive. Disclaimer: `DataSourceAzure` is constantly evolving and recent cloud images may not work because we are not emulating Azure cloud-init environment.
 
-Default username is `user` and password is `Passw0rd` (easily overriden with script parameters). Use standard parameters
+Default username is `admin` and password is `Passw0rd` (easily overriden with script parameters). Use standard parameters
 as needed: unattended use `-Force`, get some additional details `-Verbose` or to make initial checkpoint for VM use `-Debug`.
 
 You should provide your own custom `userdata.yaml` as script parameter and customize the final image.
