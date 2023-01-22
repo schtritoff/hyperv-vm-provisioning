@@ -845,13 +845,15 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
         -ArgumentList  "-x","-C `"$($ImageCachePath)`"","-f `"$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)`"" `
         -Wait -NoNewWindow `
         -RedirectStandardOutput "$($tempPath)\bsdtar.log"
+    } elseif ($ImageFileExtension.EndsWith("img")) {
+      Write-Verbose 'No need for archive extracting'
     } else {
       Write-Warning "Unsupported image in archive"
       exit 1
     }
 
     # rename bionic-server-cloudimg-amd64.vhd (or however they pack it) to $ImageFileName.vhd
-    $fileExpanded = Get-ChildItem "$($ImageCachePath)\*.vhd","$($ImageCachePath)\*.vhdx","$($ImageCachePath)\*.raw" -File | Sort-Object LastWriteTime | Select-Object -last 1
+    $fileExpanded = Get-ChildItem "$($ImageCachePath)\*.vhd","$($ImageCachePath)\*.vhdx","$($ImageCachePath)\*.raw","$($ImageCachePath)\*.img" -File | Sort-Object LastWriteTime | Select-Object -last 1
     Write-Verbose "Expanded file name: $fileExpanded"
     if ($fileExpanded -like "*.vhd") {
       Rename-Item -path $fileExpanded -newname "$ImageFileName.vhd"
@@ -861,6 +863,14 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
       Write-Verbose "qemu-img convert to vhd"
       Write-Verbose "$qemuImgPath convert -f raw $fileExpanded -O vpc $($ImageCachePath)\$ImageFileName.vhd"
       & $qemuImgPath convert -f raw "$fileExpanded" -O vpc "$($ImageCachePath)\$($ImageFileName).vhd"
+      # remove source image after conversion
+      Remove-Item "$fileExpanded" -force
+    } elseif ($fileExpanded -like "*.img") {
+      Write-Host "qemu-img info for source untouched cloud image: "
+      & $qemuImgPath info "$fileExpanded"
+      Write-Verbose "qemu-img convert to vhd"
+      Write-Verbose "$qemuImgPath convert -f qcow2 $fileExpanded -O vpc $($ImageCachePath)\$ImageFileName.vhd"
+      & $qemuImgPath convert -f qcow2 "$fileExpanded" -O vpc "$($ImageCachePath)\$($ImageFileName).vhd"
       # remove source image after conversion
       Remove-Item "$fileExpanded" -force
     } else {
