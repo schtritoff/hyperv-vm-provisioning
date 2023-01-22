@@ -870,7 +870,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
 
     Write-Host 'Convert VHD fixed to VHD dynamic...' -NoNewline
     try {
-      Convert-VHD -Path "$($ImageCachePath)\$ImageFileName.vhd" -DestinationPath "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -VHDType Dynamic -DeleteSource
+      Convert-VHD -Path "$($ImageCachePath)\$ImageFileName.vhd" -DestinationPath "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -VHDType Dynamic -DeleteSource  -BlockSizeBytes 1MB
       Write-Host -ForegroundColor Green " Done."
     } catch {
       Write-Warning $_
@@ -905,7 +905,8 @@ cleanupFile $VMDiskPath
 # Prepare VHD... (could also use copy)
 Write-Host "Prepare virtual disk..." -NoNewline
 try {
-  Convert-VHD -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -DestinationPath $VMDiskPath -VHDType Dynamic
+  # block size bytes per recommendation https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/best-practices-for-running-linux-on-hyper-v
+  Convert-VHD -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -DestinationPath $VMDiskPath -VHDType Dynamic -BlockSizeBytes 1MB
   Write-Host -ForegroundColor Green " Done."
   if ($VHDSizeBytes -and ($VHDSizeBytes -gt 30GB)) {
     Write-Host "Resize VHD to $([int]($VHDSizeBytes / 1024 / 1024 / 1024)) GB..." -NoNewline
