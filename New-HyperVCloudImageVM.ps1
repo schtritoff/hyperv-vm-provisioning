@@ -489,7 +489,7 @@ if ($null -ne $network_write_files) {
 $userdata = @"
 #cloud-config
 # vim: syntax=yaml
-# created: $(Get-Date -UFormat "%a %b/%d/%Y %T %Z")
+# created: $(Get-Date -UFormat "%b/%d/%Y %T %Z")
 
 hostname: $($VMHostname)
 fqdn: $($FQDN)
@@ -518,18 +518,26 @@ packages:
   - keyboard-configuration
 
 # documented keyboard option, but not implemented ?
+# https://cloudinit.readthedocs.io/en/latest/topics/modules.html#keyboard
+# https://github.com/sulmone/X11/blob/59029dc09211926a5c95ff1dd2b828574fefcde6/share/X11/xkb/rules/xorg.lst#L181
 keyboard:
   layout: $KeyboardLayout
   model: $KeyboardModel
   variant: $KeyboardVariant
   options: $KeyboardOptions
 
-system_info:
-  default_user:
-    name: $($GuestAdminUsername)
+# https://learn.microsoft.com/en-us/azure/virtual-machines/linux/cloudinit-add-user#add-a-user-to-a-vm-with-cloud-init
 
-password: $($GuestAdminPassword)
-chpasswd: { expire: false }
+users:
+  - default
+  - name: $($GuestAdminUsername)
+    no_user_group: true
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    plain_text_passwd: $($GuestAdminPassword)
+    lock_passwd: false
 
 disable_root: true    # true: notify default user account / false: allow root ssh login
 ssh_pwauth: true      # true: allow login with password; else only with setup pubkey(s)
