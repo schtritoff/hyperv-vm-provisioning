@@ -697,20 +697,22 @@ datasource:
 "@
 
   # src https://github.com/Azure/WALinuxAgent/blob/develop/tests/data/ovf-env.xml
+  # src2: https://github.com/canonical/cloud-init/blob/5e6ecc615318b48e2b14c2fd1f78571522848b4e/tests/unittests/sources/test_azure.py#L328
   $ovfenvxml = [xml]@"
 <?xml version="1.0" encoding="utf-8"?>
-<Environment xmlns="http://schemas.dmtf.org/ovf/environment/1" xmlns:oe="http://schemas.dmtf.org/ovf/environment/1" xmlns:wa="http://schemas.microsoft.com/windowsazure" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <wa:ProvisioningSection>
-   <wa:Version>1.0</wa:Version>
-   <LinuxProvisioningConfigurationSet
-      xmlns="http://schemas.microsoft.com/windowsazure"
-      xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
-    <ConfigurationSetType>LinuxProvisioningConfiguration</ConfigurationSetType>
-    <HostName>$($VMHostname)</HostName>
-    <UserName>$($GuestAdminUsername)</UserName>
-    <UserPassword>$($GuestAdminPassword)</UserPassword>
-    <DisableSshPasswordAuthentication>false</DisableSshPasswordAuthentication>
-    <CustomData>$([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($userdata)))</CustomData>
+<ns0:Environment xmlns="http://schemas.dmtf.org/ovf/environment/1"
+    xmlns:ns0="http://schemas.dmtf.org/ovf/environment/1"
+    xmlns:ns1="http://schemas.microsoft.com/windowsazure"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ns1:ProvisioningSection>
+    <ns1:Version>1.0</ns1:Version>
+    <ns1:LinuxProvisioningConfigurationSet>
+      <ns1:ConfigurationSetType>LinuxProvisioningConfiguration</ns1:ConfigurationSetType>
+        <ns1:HostName>$($VMHostname)</ns1:HostName>
+        <ns1:UserName>$($GuestAdminUsername)</ns1:UserName>
+        <ns1:UserPassword>$($GuestAdminPassword)</ns1:UserPassword>
+        <ns1:DisableSshPasswordAuthentication>false</ns1:DisableSshPasswordAuthentication>
+        <ns1:CustomData>$([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($userdata)))</ns1:CustomData>
     <dscfg>$([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($dscfg)))</dscfg>
     <!-- TODO add ssh key provisioning support -->
     <!--
@@ -730,22 +732,20 @@ datasource:
           </KeyPairs>
         </SSH>
     -->
-    </LinuxProvisioningConfigurationSet>
-  </wa:ProvisioningSection>
-  <!--
-  <wa:PlatformSettingsSection>
-		<wa:Version>1.0</wa:Version>
-		<wa:PlatformSettings>
-			<wa:KmsServerHostname>kms.core.windows.net</wa:KmsServerHostname>
-			<wa:ProvisionGuestAgent>false</wa:ProvisionGuestAgent>
-			<wa:GuestAgentPackageName xsi:nil="true"/>
-			<wa:RetainWindowsPEPassInUnattend>true</wa:RetainWindowsPEPassInUnattend>
-			<wa:RetainOfflineServicingPassInUnattend>true</wa:RetainOfflineServicingPassInUnattend>
-			<wa:PreprovisionedVm>false</wa:PreprovisionedVm>
-		</wa:PlatformSettings>
-	</wa:PlatformSettingsSection>
-  -->
- </Environment>
+    </ns1:LinuxProvisioningConfigurationSet>
+  </ns1:ProvisioningSection>
+
+  <ns1:PlatformSettingsSection>
+    <ns1:Version>1.0</ns1:Version>
+    <ns1:PlatformSettings>
+      <ns1:KmsServerHostname>kms.core.windows.net</ns1:KmsServerHostname>
+      <ns1:ProvisionGuestAgent>false</ns1:ProvisionGuestAgent>
+      <ns1:GuestAgentPackageName xsi:nil="true" />
+			<ns1:PreprovisionedVm>true</ns1:PreprovisionedVm>
+      <ns1:PreprovisionedVMType>Unknown</ns1:PreprovisionedVMType> <!-- https://github.com/canonical/cloud-init/blob/5e6ecc615318b48e2b14c2fd1f78571522848b4e/cloudinit/sources/DataSourceAzure.py#L94 -->
+    </ns1:PlatformSettings>
+  </ns1:PlatformSettingsSection>
+</ns0:Environment>
 "@
 }
 
