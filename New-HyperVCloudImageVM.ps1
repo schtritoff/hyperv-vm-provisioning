@@ -269,7 +269,7 @@ if ([string]::IsNullOrEmpty($VMMachinePath)) {
   # fallback
   if (-not $VMMachinePath) {
     Write-Warning "Couldn't obtain VMMachinePath from Hyper-V settings via WMI"
-    $VMMachinePath = "C:\ProgramData\Microsoft\Windows\Hyper-V"
+    $VMMachinePath = "C:\Users\Public\Documents\Hyper-V"
   }
   Write-Verbose "VMMachinePath set: $VMMachinePath"
 }
@@ -288,23 +288,6 @@ if ([string]::IsNullOrEmpty($VMStoragePath)) {
   Write-Verbose "VMStoragePath set: $VMStoragePath"
 }
 if (!(test-path $VMStoragePath)) {mkdir -Path $VMStoragePath | out-null}
-
-# storage location for base images
-$ImageCachePath = Join-Path $PSScriptRoot $(".\cache\CloudImage-$ImageOS-$ImageVersion")
-if (!(test-path $ImageCachePath)) {mkdir -Path $ImageCachePath | out-null}
-
-# Get the timestamp of the latest build on the cloud-images site
-$BaseImageStampFile = join-path $ImageCachePath "baseimagetimestamp.txt"
-[string]$stamp = ''
-if (test-path $BaseImageStampFile) {
-  $stamp = (Get-Content -Path $BaseImageStampFile | Out-String).Trim()
-  Write-Verbose "Timestamp from cache: $stamp"
-}
-if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
-  $stamp = (Invoke-WebRequest -UseBasicParsing "$($ImagePath).$($ImageManifestSuffix)").BaseResponse.LastModified.ToUniversalTime().ToString("yyyyMMddHHmmss")
-  Set-Content -path $BaseImageStampFile -value $stamp -force
-  Write-Verbose "Timestamp from web (new): $stamp"
-}
 
 # Delete the VM if it is around
 $vm = Get-VM -VMName $VMName -ErrorAction 'SilentlyContinue'
@@ -778,11 +761,28 @@ if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
 Write-Verbose "Metadata iso written"
 Write-Host -ForegroundColor Green " Done."
 
+# storage location for base images
+$ImageCachePath = Join-Path $PSScriptRoot $(".\cache\CloudImage-$ImageOS-$ImageVersion")
+if (!(test-path $ImageCachePath)) {mkdir -Path $ImageCachePath | out-null}
+
+# Get the timestamp of the target build on the cloud-images site
+$BaseImageStampFile = join-path $ImageCachePath "baseimagetimestamp.txt"
+[string]$stamp = ''
+if (test-path $BaseImageStampFile) {
+  $stamp = (Get-Content -Path $BaseImageStampFile | Out-String).Trim()
+  Write-Verbose "Timestamp from cache: $stamp"
+}
+if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
+  $stamp = (Invoke-WebRequest -UseBasicParsing "$($ImagePath).$($ImageManifestSuffix)").BaseResponse.LastModified.ToUniversalTime().ToString("yyyyMMddHHmmss")
+  Set-Content -path $BaseImageStampFile -value $stamp -force
+  Write-Verbose "Timestamp from web (new): $stamp"
+}
 
 # check if local cached cloud image is the target one per $stamp
 if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)")) {
   try {
     # If we do not have a matching image - delete the old ones and download the new one
+    Write-Verbose "Did not find: $($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)"
     Write-Host 'Removing old images from cache...' -NoNewline
     Remove-Item "$($ImageCachePath)" -Exclude 'baseimagetimestamp.txt',"$($ImageOS)-$($stamp).*" -Recurse -Force
     Write-Host -ForegroundColor Green " Done."
@@ -832,10 +832,11 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
 # check if image is extracted already
 if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
   try {
-    Write-Host 'Expanding archive...' -NoNewline
     if ($ImageFileExtension.EndsWith("zip")) {
+      Write-Host 'Expanding archive...' -NoNewline
       Expand-Archive -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)" -DestinationPath "$ImageCachePath" -Force
     } elseif (($ImageFileExtension.EndsWith("tar.gz")) -or ($ImageFileExtension.EndsWith("tar.xz"))) {
+      Write-Host 'Expanding archive using bsdtar...' -NoNewline
       # using bsdtar - src: https://github.com/libarchive/libarchive/
       # src: https://unix.stackexchange.com/a/23746/353700
       #& $bsdtarPath "-x -C `"$($ImageCachePath)`" -f `"$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)`""
@@ -1123,6 +1124,7 @@ if ($ShowSerialConsoleWindow) {
   }
   catch {
     Write-Warning "putty not available"
+    Write-Verbose "get one from https://the.earth.li/~sgtatham/putty/latest/w64/putty.exe"
   }
 }
 
