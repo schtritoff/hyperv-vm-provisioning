@@ -63,9 +63,9 @@ param(
   [string] $NetGateway = $null,
   [string] $NameServers = "1.1.1.1,1.0.0.1",
   [string] $NetConfigType = $null, # ENI, v1, v2, ENI-file, dhclient
-  [string] $KeyboardLayout = "us",
-  [string] $KeyboardModel = "pc105",
-  [string] $KeyboardOptions = "compose:rwin",
+  [string] $KeyboardLayout = "us", # 2-letter country code, for more info https://wiki.archlinux.org/title/Xorg/Keyboard_configuration
+  [string] $KeyboardModel, # default: "pc105"
+  [string] $KeyboardOptions, # example: "compose:rwin"
   [string] $Locale = "en_US", # "en_US.UTF-8",
   [string] $TimeZone = "UTC", # UTC or continental zones of IANA DB like: Europe/Berlin
   [string] $CustomUserDataYamlFile,
@@ -520,12 +520,18 @@ growpart:
 #  http_proxy: http://host:port
 #  https_proxy: http://host:port
 
-apt_preserve_sources_list: true
+preserve_sources_list: true
 package_update: true
 package_upgrade: true
 package_reboot_if_required: true
 packages:
-  - hyperv-daemons
+$(if ($ImageOS -eq "debian") {
+# hyperv linux integration services https://poweradm.com/install-linux-integration-services-hyper-v/
+"  - hyperv-daemons"}
+elseif (($ImageOS -eq "ubuntu")) {
+"  - linux-tools-virtual
+  - linux-cloud-tools-virtual"
+})
   - eject
   - console-setup
   - keyboard-configuration
@@ -535,9 +541,8 @@ packages:
 # https://github.com/sulmone/X11/blob/59029dc09211926a5c95ff1dd2b828574fefcde6/share/X11/xkb/rules/xorg.lst#L181
 keyboard:
   layout: $KeyboardLayout
-  model: $KeyboardModel
-  variant: $KeyboardVariant
-  options: $KeyboardOptions
+$(if (-not [string]::IsNullOrEmpty($KeyboardModel)) {"  model: $KeyboardModel"})
+$(if (-not [string]::IsNullOrEmpty($KeyboardOptions)) {"  options: $KeyboardOptions"})
 
 # https://learn.microsoft.com/en-us/azure/virtual-machines/linux/cloudinit-add-user#add-a-user-to-a-vm-with-cloud-init
 
