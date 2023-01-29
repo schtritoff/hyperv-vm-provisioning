@@ -1163,17 +1163,17 @@ Write-Host -ForegroundColor Green " Done."
 
 
 if ($ShowSerialConsoleWindow) {
-  # start putty with serial connection to newly created VM
-  # TODO alternative: https://stackoverflow.com/a/48661245/1155121
+  # start putty or hvc.exe with serial connection to newly created VM
   try {
     Get-Command "putty" | out-null
     start-sleep -seconds 2
     & "PuTTY" -serial "\\.\pipe\$VMName-com1" -sercfg "115200,8,n,1,N"
   }
   catch {
-    Write-Warning "putty not available"
-    Write-Verbose "get one from https://the.earth.li/~sgtatham/putty/latest/w64/putty.exe"
+    Write-Verbose "putty not available, will try Windows Terminal + hvc.exe"
+    Start-Process "wt.exe" "new-tab cmd /k hvc.exe serial $VMName" -WindowStyle Normal
   }
+
 }
 
 if ($ShowVmConnectWindow) {
