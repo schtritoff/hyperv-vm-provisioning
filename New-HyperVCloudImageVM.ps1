@@ -526,12 +526,16 @@ package_update: true
 package_upgrade: true
 package_reboot_if_required: true
 packages:
-$(if ($ImageOS -eq "debian") {
+$(
 # hyperv linux integration services https://poweradm.com/install-linux-integration-services-hyper-v/
+if ($ImageOS -eq "debian") {
+
 "  - hyperv-daemons"}
 elseif (($ImageOS -eq "ubuntu")) {
+# azure kernel https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/Supported-Ubuntu-virtual-machines-on-Hyper-V#notes
 "  - linux-tools-virtual
-  - linux-cloud-tools-virtual"
+  - linux-cloud-tools-virtual
+  - linux-azure"
 })
   - eject
   - console-setup
