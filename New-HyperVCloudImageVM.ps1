@@ -68,6 +68,7 @@ param(
   [string] $KeyboardOptions, # example: "compose:rwin"
   [string] $Locale = "en_US", # "en_US.UTF-8",
   [string] $TimeZone = "UTC", # UTC or continental zones of IANA DB like: Europe/Berlin
+  [string] $CloudInitPowerState = "reboot", # poweroff, halt, or reboot , https://cloudinit.readthedocs.io/en/latest/reference/modules.html#power-state-change
   [string] $CustomUserDataYamlFile,
   [string] $GuestAdminUsername = "admin",
   [string] $GuestAdminPassword = "Passw0rd",
@@ -664,8 +665,8 @@ $(if ($NameServers.Contains("1.1.1.1")) { "  # cloudflare dns, src: https://1.1.
   domain: $($DomainName)
 
 power_state:
-  mode: reboot
-  message: Provisioning finished, rebooting ...
+  mode: $($CloudInitPowerState)
+  message: Provisioning finished, will $($CloudInitPowerState) ...
   timeout: 15
 "@
 
