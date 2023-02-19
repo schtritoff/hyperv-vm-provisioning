@@ -912,7 +912,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
 
     Write-Host 'Convert VHD fixed to VHD dynamic...' -NoNewline
     try {
-      Convert-VHD -Path "$($ImageCachePath)\$ImageFileName.vhd" -DestinationPath "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -VHDType Dynamic -DeleteSource  -BlockSizeBytes 1MB
+      Convert-VHD -Path "$($ImageCachePath)\$ImageFileName.vhd" -DestinationPath "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -VHDType Dynamic -DeleteSource
       Write-Host -ForegroundColor Green " Done."
     } catch {
       Write-Warning $_
