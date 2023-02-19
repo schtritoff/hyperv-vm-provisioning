@@ -287,7 +287,7 @@ if ($UseAzureDataSource) {
 
 # Set path for storing all VM files
 if (-not [string]::IsNullOrEmpty($VMMachine_StoragePath)) {
-  $VMMachinePath = $VMMachine_StoragePath
+  $VMMachinePath = $VMMachine_StoragePath.TrimEnd('\')
   $VMStoragePath = "$VMMachine_StoragePath\$VMName\Virtual Hard Disks"
   Write-Verbose "VMStoragePath set: $VMStoragePath"
 }
@@ -805,7 +805,7 @@ Write-Verbose "Metadata iso written"
 Write-Host -ForegroundColor Green " Done."
 
 # storage location for base images
-$ImageCachePath = Join-Path $PSScriptRoot $(".\cache\CloudImage-$ImageOS-$ImageVersion")
+$ImageCachePath = Join-Path $PSScriptRoot $("cache\CloudImage-$ImageOS-$ImageVersion")
 if (!(test-path $ImageCachePath)) {mkdir -Path $ImageCachePath | out-null}
 
 # Get the timestamp of the target build on the cloud-images site
