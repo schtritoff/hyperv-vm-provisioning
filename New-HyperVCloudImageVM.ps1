@@ -53,7 +53,8 @@ param(
   [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
   [string] $VMMachinePath = $null, # if not defined here default Virtal Machine path is used
   [string] $VMStoragePath = $null, # if not defined here Hyper-V settings path / fallback path is set below
-  [bool] $UseAzureDataSource = $false,
+  [bool] $ConvertImageToNoCloud = $false, # could be used for other image types that do not support NoCloud, not just Azure
+  [bool] $ImageTypeAzure = $false,
   [string] $DomainName = "domain.local",
   [string] $VMStaticMacAddress = $null,
   [string] $NetInterface = "eth0",
@@ -208,15 +209,16 @@ Switch ($ImageVersion) {
     $ImageVersion = "22.04-azure"
   }
   "jammy-azure" {
-    $UseAzureDataSource = $true
+    $ImageTypeAzure = $true
+    $ConvertImageToNoCloud = $true
     $ImageOS = "ubuntu"
-    $ImageVersion = "22.04"
-    $ImageVersionName = "jammy"
+    #$ImageVersion = "22.04"
+    #$ImageVersionName = "jammy"
     $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-azure.vhd.tar.gz
     $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
-    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64-azure" # should contain "vhd.*" version
+    $ImageUrlRoot = "$ImageBaseUrl/jammy/$ImageRelease/" # latest
+    $ImageFileName = "$ImageOS-22.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
     $ImageFileExtension = "vhd.tar.gz" # or "vhd.zip" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
@@ -281,7 +283,7 @@ $ImagePath = "$($ImageUrlRoot)$($ImageFileName)"
 $ImageHashPath = "$($ImageUrlRoot)$($ImageHashFileName)"
 
 # use Azure specifics only if such cloud image is chosen
-if ($UseAzureDataSource) {
+if ($ImageTypeAzure) {
   Write-Verbose "Using Azure data source for cloud init in: $ImageFileName"
 }
 
@@ -587,8 +589,9 @@ $(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
   # remove metadata iso
   - [ sh, -c, "if test -b /dev/cdrom; then eject; fi" ]
   - [ sh, -c, "if test -b /dev/sr0; then eject /dev/sr0; fi" ]
-$(if ($UseAzureDataSource) { "
+$(if ($ImageTypeAzure) { "
     # dont start waagent service since it useful only for azure/scvmm
+  - [ systemctl, stop, walinuxagent.service]
   - [ systemctl, disable, walinuxagent.service]
 "})  # disable cloud init on next boot (https://cloudinit.readthedocs.io/en/latest/topics/boot.html, https://askubuntu.com/a/1047618)
   - [ sh, -c, touch /etc/cloud/cloud-init.disabled ]
@@ -685,7 +688,7 @@ if (-not [string]::IsNullOrEmpty($CustomUserDataYamlFile) -and (Test-Path $Custo
   $userdata = $ExecutionContext.InvokeCommand.ExpandString( $(Get-Content $CustomUserDataYamlFile -Raw) ) # parse variables
 }
 
-if ($UseAzureDataSource) {
+if ($ImageTypeAzure) {
   # cloud-init configuration that will be merged, see https://cloudinit.readthedocs.io/en/latest/topics/datasources/azure.html
   $dscfg = @"
 datasource:
@@ -768,7 +771,7 @@ if (($NetAutoconfig -eq $false) -and
   Set-Content "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") -Encoding Byte
 }
 Set-Content "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") -Encoding Byte
-if ($UseAzureDataSource) {
+if ($ImageTypeAzure) {
   $ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
 }
 
@@ -778,27 +781,12 @@ Write-Host "Creating metadata iso for VM provisioning - " -NoNewline
 $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
-if ($UseAzureDataSource) {
-  <# azure #>
-  Write-Host "Azure format..." -NoNewline
-#    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-u2","-udfver200" `
-  Start-Process `
-    -FilePath $oscdimgPath `
-    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-j2" `
-    -Wait -NoNewWindow `
-    -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
-} elseif ($ImageFileName.Contains("nocloud") -or ($UseAzureDataSource -eq $false)) {
-  <# NoCloud #>
-  Write-Host "NoCloud format.." -NoNewline
-  Start-Process `
-	  -FilePath $oscdimgPath `
-    -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
-	  -Wait -NoNewWindow `
-	  -RedirectStandardOutput "$($tempPath)\oscdimg.log"
-} else {
-  Write-Host "Error: Image Type not supported."
-  exit 1
-}
+
+Start-Process `
+  -FilePath $oscdimgPath `
+  -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
+  -Wait -NoNewWindow `
+  -RedirectStandardOutput "$($tempPath)\oscdimg.log"
 
 if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
 Write-Verbose "Metadata iso written"
@@ -940,6 +928,20 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
       #Rename-Item -path "$($ImageCachePath)\$ImageFileName.vhd" -newname "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" # not VHDX
       Write-Host -ForegroundColor Green " Done."
     }
+
+    if ($ConvertImageToNoCloud) {
+      Write-Host 'Modify VHD and convert cloud-init to NoCloud ...' -NoNewline
+      $process = Start-Process `
+      -FilePath cmd.exe `
+      -Wait -PassThru -NoNewWindow `
+      -ArgumentList "/c `"`"$(Join-Path $PSScriptRoot "wsl-convert-vhd-nocloud.cmd")`" `"$($ImageCachePath)\$($ImageOS)-$($stamp).vhd`"`""
+      # https://stackoverflow.com/a/16018287/1155121
+      if ($process.ExitCode -ne 0) {
+        throw "Failed to modify/convert VHD to NoCloud DataSource!"
+      }
+      Write-Host -ForegroundColor Green " Done."
+    }
+
   }
   catch {
     cleanupFile "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
@@ -1133,7 +1135,7 @@ Write-Host -ForegroundColor Green " Done."
 # https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
 Write-Host "Set SMBIOS serial number ..."
 $vmserial_smbios = $VmMachineId
-if ($UseAzureDataSource) {
+if ($ImageTypeAzure) {
   # set chassis asset tag to Azure constant as documented in https://github.com/canonical/cloud-init/blob/5e6ecc615318b48e2b14c2fd1f78571522848b4e/cloudinit/sources/helpers/azure.py#L1082
   Write-Host "Set Azure chasis asset tag ..." -NoNewline
   # https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
