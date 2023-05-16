@@ -33,7 +33,9 @@ if ($Force -or $PSCmdlet.ShouldContinue("Are you sure you want to delete VM?", "
                     remove-item -path $_.path -force -ErrorAction SilentlyContinue
                 }
             }
-
+            #remove cloud-init metadata iso
+            $VHDPath = (Get-VMHost).VirtualHardDiskPath
+            Remove-Item -Path "$VHDPath$v-metadata.iso" -ErrorAction SilentlyContinue
             # remove vm
             Remove-VM -VMName $v -Force -ErrorAction SilentlyContinue | Out-Null
         }
