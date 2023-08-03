@@ -276,14 +276,14 @@ Switch ($ImageVersion) {
     $ImageManifestSuffix = "json"
   }
   "testing" {
-    $_ = "sid"
-    $ImageVersion = "sid"
+    $_ = "trixie"
+    $ImageVersion = "trixie"
   }
-  "sid" {
+  "trixie" {
     $ImageOS = "debian"
-    $ImageVersionName = "sid"
+    $ImageVersionName = "trixie"
     $ImageRelease = "daily/latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # http://cloud.debian.org/images/cloud/sid/daily/latest/debian-sid-azure-amd64-daily.tar.xz
+    # http://cloud.debian.org/images/cloud/trixie/daily/latest/debian-trixie-azure-amd64-daily.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
     $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
     #$ImageFileName = "$ImageOS-$ImageVersion-nocloud-amd64" # should contain "raw" version
