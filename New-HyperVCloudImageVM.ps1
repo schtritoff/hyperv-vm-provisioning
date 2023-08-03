@@ -258,6 +258,23 @@ Switch ($ImageVersion) {
     $ImageHashFileName = "SHA512SUMS"
     $ImageManifestSuffix = "json"
   }
+  "12" {
+    $_ = "bookworm"
+    $ImageVersion = "12"
+  }
+  "bookworm" {
+    $ImageOS = "debian"
+    $ImageVersionName = "bookworm"
+    $ImageRelease = "latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
+    # http://cloud.debian.org/images/cloud/bookworm/latest/debian-12-azure-amd64.tar.xz
+    $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
+    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
+    $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "raw" version
+    $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
+    # Manifest file is used for version check based on last modified HTTP header
+    $ImageHashFileName = "SHA512SUMS"
+    $ImageManifestSuffix = "json"
+  }
   "testing" {
     $_ = "sid"
     $ImageVersion = "sid"
