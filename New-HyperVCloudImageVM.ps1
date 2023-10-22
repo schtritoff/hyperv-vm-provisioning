@@ -164,16 +164,6 @@ Switch ($ImageVersion) {
         $ImageManifestSuffix = "manifest"
       }
 
-      "22.04-azure" { 
-        $ImageFileExtension = "vhd.tar.gz"
-        $ImageTypeAzure = $true
-        $ConvertImageToNoCloud = $true
-        $ImageVersionName = "jammy"
-        $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64-azure"
-        $ImageManifestSuffix = "vhd.manifest"
-        $ImageFileName = "$ImageOS-22.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
-      }
-
       { "18.04", "20.04", "22.04" -contains $_ } {
         #$ImageFileName = "$ImageOS-$ImageVersion-nocloud-amd64" # should contain "raw" version
         $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
@@ -187,6 +177,16 @@ Switch ($ImageVersion) {
         $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "vhd.*" version
         $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
         $ImageHashFileName = "SHA512SUMS"
+      }
+
+      "22.04-azure" { 
+        $ImageFileExtension = "vhd.tar.gz"
+        $ImageTypeAzure = $true
+        $ConvertImageToNoCloud = $true
+        $ImageVersionName = "jammy"
+        $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64-azure"
+        $ImageManifestSuffix = "vhd.manifest"
+        $ImageFileName = "$ImageOS-22.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
       }
 
       "testing" { 
