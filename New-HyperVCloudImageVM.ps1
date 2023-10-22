@@ -318,9 +318,7 @@ if (-not [string]::IsNullOrEmpty($VMMachine_StoragePath)) {
 
 # Get default Virtual Machine path (requires administrative privileges)
 if ([string]::IsNullOrEmpty($VMMachinePath)) {
-  $vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
-  $vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
-  $VMMachinePath = $vmmsSettings.DefaultVirtualMachinePath
+  $VMMachinePath = (Get-VMHost).VirtualMachinePath
   # fallback
   if (-not $VMMachinePath) {
     Write-Warning "Couldn't obtain VMMachinePath from Hyper-V settings via WMI"
@@ -328,13 +326,11 @@ if ([string]::IsNullOrEmpty($VMMachinePath)) {
   }
   Write-Verbose "VMMachinePath set: $VMMachinePath"
 }
-if (!(test-path $VMMachinePath)) {mkdir -Path $VMMachinePath | out-null}
+if (!(test-path $VMMachinePath)) {New-Item -ItemType Directory -Path $VMMachinePath | out-null}
 
 # Get default Virtual Hard Disk path (requires administrative privileges)
 if ([string]::IsNullOrEmpty($VMStoragePath)) {
-  $vmms = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementService
-  $vmmsSettings = Get-WmiObject -namespace root\virtualization\v2 Msvm_VirtualSystemManagementServiceSettingData
-  $VMStoragePath = $vmmsSettings.DefaultVirtualHardDiskPath
+  $VMStoragePath = (Get-VMHost).VirtualHardDiskPath
   # fallback
   if (-not $VMStoragePath) {
     Write-Warning "Couldn't obtain VMStoragePath from Hyper-V settings via WMI"
@@ -342,7 +338,7 @@ if ([string]::IsNullOrEmpty($VMStoragePath)) {
   }
   Write-Verbose "VMStoragePath set: $VMStoragePath"
 }
-if (!(test-path $VMStoragePath)) {mkdir -Path $VMStoragePath | out-null}
+if (!(test-path $VMStoragePath)) {New-Item -ItemType Directory -Path $VMStoragePath | out-null}
 
 # Delete the VM if it is around
 $vm = Get-VM -VMName $VMName -ErrorAction 'SilentlyContinue'
