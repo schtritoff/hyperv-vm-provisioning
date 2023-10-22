@@ -161,6 +161,7 @@ Switch ($ImageVersion) {
         $ImageOS = "ubuntu"
         $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
         $ImageHashFileName = "SHA256SUMS" # Manifest file is used for version check based on last modified HTTP header
+        $ImageManifestSuffix = "manifest"
       }
 
       "22.04-azure" { 
