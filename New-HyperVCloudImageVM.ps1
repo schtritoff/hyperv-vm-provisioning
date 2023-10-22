@@ -153,130 +153,62 @@ $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar.exe"
 # https://docs.microsoft.com/en-us/troubleshoot/azure/virtual-machines/cloud-init-deployment-delay
 # and also somehow causing at sshd restart in password setting task to stuck for 30 minutes.
 Switch ($ImageVersion) {
-  "18.04" {
-    $_ = "bionic"
-    $ImageVersion = "18.04"
-  }
-  "bionic" {
-    $ImageOS = "ubuntu"
-    $ImageVersionName = "bionic"
-    $ImageVersion = "18.04"
-    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
-    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
-    $ImageFileExtension = "img"
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
-  }
-  "20.04" {
-    $_ = "focal"
-    $ImageVersion = "20.04"
-  }
-  "focal" {
-    $ImageOS = "ubuntu"
-    $ImageVersionName = "focal"
-    $ImageVersion = "20.04"
-    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
-    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
-    $ImageFileExtension = "img"
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
-  }
-  "22.04" {
-    $_ = "jammy"
-    $ImageVersion = "22.04"
-  }
-  "jammy" {
-    $ImageOS = "ubuntu"
-    $ImageVersionName = "jammy"
-    $ImageVersion = "22.04"
-    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
-    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
-    $ImageFileExtension = "img"
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
-  }
-  "22.04-azure" {
-    $_ = "jammy-azure"
-    $ImageVersion = "22.04-azure"
-  }
-  "jammy-azure" {
-    $ImageTypeAzure = $true
-    $ConvertImageToNoCloud = $true
-    $ImageOS = "ubuntu"
-    #$ImageVersion = "22.04"
-    #$ImageVersionName = "jammy"
-    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-azure.vhd.tar.gz
-    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
-    $ImageUrlRoot = "$ImageBaseUrl/jammy/$ImageRelease/" # latest
-    $ImageFileName = "$ImageOS-22.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
-    $ImageFileExtension = "vhd.tar.gz" # or "vhd.zip" on older releases
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "vhd.manifest"
-  }
-  "10" {
-    $_ = "buster"
-    $ImageVersion = "10"
-  }
-  "buster" {
-    $ImageOS = "debian"
-    $ImageVersionName = "buster"
-    $ImageRelease = "latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # http://cloud.debian.org/images/cloud/buster/latest/debian-10-azure-amd64.tar.xz
-    $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
+
+  { "18.04", "20.04", "22.04", "22.04-azure", "10", "11", "testing" -contains $_ } {
+    switch ($ImageVersion) {
+
+      { "18.04", "20.04", "22.04", "22.04-azure" -contains $_ } {
+        $ImageOS = "ubuntu"
+        $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
+        $ImageHashFileName = "SHA256SUMS" # Manifest file is used for version check based on last modified HTTP header
+      }
+
+      "22.04-azure" { 
+        $ImageFileExtension = "vhd.tar.gz"
+        $ImageTypeAzure = $true
+        $ConvertImageToNoCloud = $true
+        $ImageVersionName = "jammy"
+        $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64-azure"
+        $ImageManifestSuffix = "vhd.manifest"
+        $ImageFileName = "$ImageOS-22.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
+      }
+
+      { "18.04", "20.04", "22.04" -contains $_ } {
+        #$ImageFileName = "$ImageOS-$ImageVersion-nocloud-amd64" # should contain "raw" version
+        $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
+        $ImageFileExtension = "img"
+      }
+          
+      { "10", "11", "testing" -contains $_ } { 
+        $ImageOS = "debian"
+        $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
+        $ImageManifestSuffix = "json"
+        $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "vhd.*" version
+        $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
+        $ImageHashFileName = "SHA512SUMS"
+      }
+
+      "testing" { 
+        $ImageVersionName = "sid"
+        $ImageFileName = "$ImageOS-$ImageVersionName-azure-amd64-daily"
+      }
+
+      "18.04" { $ImageVersionName = "bionic" }
+      "20.04" { $ImageVersionName = "focal" }
+      "22.04" { $ImageVersionName = "jammy" }
+      "10" { $ImageVersionName = "buster" }
+      "11" { $ImageVersionName = "bullseye" }
+      default {}
+    }
+
+    # default options are release,latest & daily/latest but could be fixed to some specific version for example "release-20210413"
+    if ($ImageOS -like "ubuntu") { $ImageRelease = "release" }
+    elseif (($ImageOS -like "debian") -and ($ImageVersion -like "testing")) { $ImageRelease = "daily/latest" }
+    else { $ImageRelease = "latest" }
+
     $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
-    $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "vhd.*" version
-    $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
   }
-  "11" {
-    $_ = "bullseye"
-    $ImageVersion = "11"
-  }
-  "bullseye" {
-    $ImageOS = "debian"
-    $ImageVersionName = "bullseye"
-    $ImageRelease = "latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # http://cloud.debian.org/images/cloud/bullseye/latest/debian-11-azure-amd64.tar.xz
-    $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
-    $ImageFileName = "$ImageOS-$ImageVersion-genericcloud-amd64" # should contain "raw" version
-    $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
-  }
-  "testing" {
-    $_ = "sid"
-    $ImageVersion = "sid"
-  }
-  "sid" {
-    $ImageOS = "debian"
-    $ImageVersionName = "sid"
-    $ImageRelease = "daily/latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
-    # http://cloud.debian.org/images/cloud/sid/daily/latest/debian-sid-azure-amd64-daily.tar.xz
-    $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
-    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
-    #$ImageFileName = "$ImageOS-$ImageVersion-nocloud-amd64" # should contain "raw" version
-    $ImageFileName = "$ImageOS-$ImageVersion-azure-amd64-daily" # should contain "raw" version
-    $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
-    # Manifest file is used for version check based on last modified HTTP header
-    $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
-  }
-  default {throw "Image version $ImageVersion not supported."}
+  default { throw "Image version $ImageVersion not supported." }
 }
 
 $ImagePath = "$($ImageUrlRoot)$($ImageFileName)"
