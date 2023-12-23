@@ -2,8 +2,8 @@
 .SYNOPSIS
   Provision Cloud images on Hyper-V
 .EXAMPLE
-  PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "azure-1" -ImageVersion "20.04" -VirtualSwitchName "SW01" -VMGeneration 2
-  PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 8GB -VMName "debian11" -ImageVersion 11 -virtualSwitchName "External Switch" -VMGeneration 2 -GuestAdminUsername admin -GuestAdminPassword admin -VMMachine_StoragePath "D:\Hyper-V\" -NetAddress 192.168.188.12 -NetNetmask 255.255.255.0 -NetGateway 192.168.188.1 -NameServers "192.168.188.1"
+  PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "azure-1" -ImageVersion "jammy-azure" -VMGeneration 2
+  PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 8GB -VMName "azure-2" -ImageVersion "testing-azure" -VirtualSwitchName "SWBRIDGE" -VMGeneration 2 -VMMachine_StoragePath "D:\HyperV" -NetAddress 192.168.2.22/24 -NetGateway 192.168.2.1 -NameServers "192.168.2.1" -ShowSerialConsoleWindow -ShowVmConnectWindow
   It should download cloud image and create VM, please be patient for first boot - it could take 10 minutes
   and requires network connection on VM
 .NOTES
