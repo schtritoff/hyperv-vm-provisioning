@@ -56,10 +56,10 @@ if ($Force -or $PSCmdlet.ShouldContinue("Are you sure you want to delete VM?", "
                 $topDir = (Get-Item $_).Parent.Parent.FullName
                 Write-Verbose "Deleting empty folders from top path: $topDir"
                 do {
-                    $dirs = Get-ChildItem $topDir -directory -recurse | Where-Object { (Get-ChildItem $_.fullName).count -eq 0 } | Select-Object -expandproperty FullName
+                    $dirs = Get-ChildItem $topDir -directory -recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName.Contains($v) -and (Get-ChildItem $_.fullName -ErrorAction SilentlyContinue).count -eq 0 } | Select-Object -expandproperty FullName
                     $dirs | Foreach-Object {
                         Write-Verbose "Removing... $_"
-                        Remove-Item $_ -Force:$false -ErrorAction SilentlyContinue
+                        Remove-Item $_ -Force:$false -Confirm:$false -ErrorAction SilentlyContinue
                     }
                 } while ($dirs.count -gt 0)
             }
