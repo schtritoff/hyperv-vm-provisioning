@@ -372,9 +372,9 @@ if ($NetAutoconfig -eq $false) {
   #$NetConfigType = "ENI"
   #$NetConfigType = "ENI-file" ## needed for Debian
   #$NetConfigType = "dhclient"
-  if ($null -eq $NetConfigType) {
-    Write-Verbose "No special OS found; usind default manual network configuration 'v2'."
+  if ([string]::IsNullOrEmpty($NetConfigType)) {
     $NetConfigType = "v2"
+    Write-Verbose "Using default manual network configuration '$NetConfigType'."
   } else {
     Write-Verbose "NetworkConfigType: '$NetConfigType' assigned."
   }
