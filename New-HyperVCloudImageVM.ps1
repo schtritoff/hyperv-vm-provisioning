@@ -422,13 +422,16 @@ config:
     Write-Verbose "v2 requested ..."
     $networkconfig = @"
 version: 2
-config: enabled
 ethernets:
   $($NetInterface):
-    dhcp: $NetAutoconfig
+    dhcp4: $NetAutoconfig
+    dhcp6: $NetAutoconfig
     #$(if (($null -eq $VMStaticMacAddress) -or ($VMStaticMacAddress -eq "")) { "#" })mac_address: $VMStaticMacAddress
-    $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })addresses: $NetAddress
-    $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })gateway4: $NetGateway
+    $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })addresses:
+    $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })  - $NetAddress
+    $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })routes:
+    $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })  - to: default
+    $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })    via: $NetGateway
     nameservers:
       addresses: ['$($NameServers.Split(",") -join "', '" )']
       search: ['$($DomainName)']
