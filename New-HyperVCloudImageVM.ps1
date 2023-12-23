@@ -84,6 +84,9 @@ param(
   [switch] $Force = $false
 )
 
+[System.Threading.Thread]::CurrentThread.CurrentUICulture = "en-US"
+[System.Threading.Thread]::CurrentThread.CurrentCulture = "en-US"
+
 $NetAutoconfig = (($null -eq $NetAddress) -or ($NetAddress -eq "")) -and
                  (($null -eq $NetNetmask) -or ($NetNetmask -eq "")) -and
                  (($null -eq $NetNetwork) -or ($NetNetwork -eq "")) -and
