@@ -279,7 +279,7 @@ Switch ($ImageVersion) {
     $ImageManifestSuffix = "json"
   }
   "testing-azure" {
-    $_ = "trixie"
+    $_ = "trixie-azure"
     $ImageVersion = "trixie"
   }
   "trixie-azure" {
