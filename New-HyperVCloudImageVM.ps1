@@ -459,7 +459,7 @@ ethernets:
     dhcp6: $NetAutoconfig
     #$(if (($null -eq $VMStaticMacAddress) -or ($VMStaticMacAddress -eq "")) { "#" })mac_address: $VMStaticMacAddress
     $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })addresses:
-    $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })  - $NetAddress
+    $(if (($null -eq $NetAddress) -or ($NetAddress -eq "")) { "#" })  - $NetAddress/24
     $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })routes:
     $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })  - to: default
     $(if (($null -eq $NetGateway) -or ($NetGateway -eq "")) { "#" })    via: $NetGateway
