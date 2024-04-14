@@ -75,6 +75,7 @@ param(
   [string] $GuestAdminUsername = "admin",
   [string] $GuestAdminPassword = "Passw0rd",
   [string] $GuestAdminSshPubKey,
+  [string] $GuestAdminSshPubKeyFile,
   [string] $ImageVersion = "20.04", # $ImageName ="focal" # 20.04 LTS , $ImageName="bionic" # 18.04 LTS
   [string] $ImageRelease = "release", # default option is get latest but could be fixed to some specific version for example "release-20210413"
   [string] $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases", # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
@@ -621,6 +622,10 @@ users:
 $(if (-not [string]::IsNullOrEmpty($GuestAdminSshPubKey)) {
 "    ssh_authorized_keys:
     - $GuestAdminSshPubKey
+"})
+$(if (-not [string]::IsNullOrEmpty($GuestAdminSshPubKeyFile)) {
+"    ssh_authorized_keys:
+    - $(Get-Content -Path $GuestAdminSshPubKeyFile -Raw)
 "})
 
 disable_root: true    # true: notify default user account / false: allow root ssh login
