@@ -22,6 +22,8 @@ if ($Force -or $PSCmdlet.ShouldContinue("Are you sure you want to delete VM?", "
                 $v = $v.Name
             }
 
+            Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "vmconnect.exe" -and $_.CommandLine -like "*$v*" } | ForEach-Object { Stop-Process -Id $_.ProcessId }
+
             Write-Verbose "Trying to stop $v ..."
             stop-vm $v -TurnOff -Confirm:$false -ErrorAction 'SilentlyContinue' | Out-Null
 
