@@ -664,7 +664,7 @@ write_files:
       # RedHat based systems
       #if_file="/etc/sysconfig/network-scripts/ifcfg-"$1
       # Debian based systems
-      if_file=`"/etc/network/interrfaces.d/*`"
+      if_file=`"/etc/network/interfaces.d/*`"
 
       dhcp=`$(grep `"dhcp`" `$if_file 2>/dev/null)
 
