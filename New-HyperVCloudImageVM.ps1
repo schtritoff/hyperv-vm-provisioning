@@ -24,6 +24,7 @@
 
 #requires -Modules Hyper-V
 #requires -RunAsAdministrator
+#requires -PSEdition Desktop
 
 [CmdletBinding()]
 param(
