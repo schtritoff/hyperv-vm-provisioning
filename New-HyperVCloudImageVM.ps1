@@ -228,6 +228,43 @@ Switch ($ImageVersion) {
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestSuffix = "vhd.manifest"
   }
+  "24.04" {
+    $_ = "noble"
+    $ImageVersion = "24.04"
+  }
+  "noble" {
+    $ImageOS = "ubuntu"
+    $ImageVersionName = "noble"
+    $ImageVersion = "24.04"
+    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
+    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
+    $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/" # latest
+    $ImageFileName = "$ImageOS-$ImageVersion-server-cloudimg-amd64"
+    $ImageFileExtension = "img"
+    # Manifest file is used for version check based on last modified HTTP header
+    $ImageHashFileName = "SHA256SUMS"
+    $ImageManifestSuffix = "manifest"
+  }
+  "24.04-azure" {
+    $_ = "noble-azure"
+    $ImageVersion = "24.04-azure"
+  }
+  "noble-azure" {
+    $ImageTypeAzure = $true
+    $ConvertImageToNoCloud = $true
+    $ImageOS = "ubuntu"
+    #$ImageVersion = "24.04"
+    #$ImageVersionName = "noble"
+    $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
+    # https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-azure.vhd.tar.gz
+    $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
+    $ImageUrlRoot = "$ImageBaseUrl/noble/$ImageRelease/" # latest
+    $ImageFileName = "$ImageOS-24.04-server-cloudimg-amd64-azure" # should contain "vhd.*" version
+    $ImageFileExtension = "vhd.tar.gz" # or "vhd.zip" on older releases
+    # Manifest file is used for version check based on last modified HTTP header
+    $ImageHashFileName = "SHA256SUMS"
+    $ImageManifestSuffix = "vhd.manifest"
+  }
   "10" {
     $_ = "buster"
     $ImageVersion = "10"
