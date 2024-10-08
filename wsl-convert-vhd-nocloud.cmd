@@ -38,6 +38,17 @@ exit /B 1
 )
 del /Q wsl-help.txt
 
+:: check if wsl has default distro
+wsl.exe --list > wsl-list.txt
+find /I "(Default)" wsl-list.txt 1>NUL
+IF %ERRORLEVEL% NEQ 0 (
+echo wsl.exe does not have default distro. Error code: Wsl/WSL_E_DEFAULT_DISTRO_NOT_FOUND
+echo see https://github.com/microsoft/WSL/issues/9338
+del /Q wsl-list.txt
+exit /B 1
+)
+del /Q wsl-list.txt
+
 echo.
 echo ::: Mount VHD to Windows ...
 :: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/diskpart-scripts-and-examples
