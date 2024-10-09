@@ -871,7 +871,9 @@ if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
 }
 
 # check if local cached cloud image is the target one per $stamp
-if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)")) {
+if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)") `
+  -and !(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd") # download only if VHD of requested $stamp version is not present in cache 
+) {
   try {
     # If we do not have a matching image - delete the old ones and download the new one
     Write-Verbose "Did not find: $($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)"
@@ -990,6 +992,11 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
       #Write-Warning "Failed to convert the disk, will use it as is..."
       #Rename-Item -path "$($ImageCachePath)\$ImageFileName.vhd" -newname "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" # not VHDX
       Write-Host -ForegroundColor Green " Done."
+    }
+
+    # if not debugging then delete downloaded cloud image to save space. Once the image is extracted and converted to VHD it is not needed anymore
+    if ($PSBoundParameters.Debug -eq $false) {
+      Get-ChildItem "$($ImageCachePath)" -Exclude @("*.txt","*.vhd") | Remove-Item -Force
     }
 
     # since VHD's are sitting in the cache lets make them as small as posible
