@@ -991,6 +991,9 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
       Write-Host -ForegroundColor Green " Done."
     }
 
+    # since VHD's are sitting in the cache lets make them as small as posible
+    & .\Compact-VHD.ps1 -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
+
     if ($ConvertImageToNoCloud) {
       Write-Host 'Modify VHD and convert cloud-init to NoCloud ...' -NoNewline
       $process = Start-Process `
