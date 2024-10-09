@@ -837,7 +837,7 @@ if ($ImageTypeAzure) {
 
 # Create meta data ISO image, src: https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
 # both azure and nocloud support same cdrom filesystem https://github.com/canonical/cloud-init/blob/606a0a7c278d8c93170f0b5fb1ce149be3349435/cloudinit/sources/DataSourceAzure.py#L1972
-Write-Host "Creating metadata iso for VM provisioning - " -NoNewline
+Write-Host "Creating metadata iso for VM provisioning... " -NoNewline
 $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
@@ -846,7 +846,8 @@ Start-Process `
   -FilePath $oscdimgPath `
   -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
   -Wait -NoNewWindow `
-  -RedirectStandardOutput "$($tempPath)\oscdimg.log"
+  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
+  -RedirectStandardError  "$($tempPath)\oscdimg-err.log"
 
 if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
 Write-Verbose "Metadata iso written"
@@ -1060,13 +1061,13 @@ Set-VMDvdDrive -VMName $VMName -Path "$metaDataIso"
 If (($null -ne $virtualSwitchName) -and ($virtualSwitchName -ne "")) {
   Write-Verbose "Connecting VMnet adapter to virtual switch '$virtualSwitchName'..."
 } else {
-  Write-Warning "No Virtual network switch given."
+  Write-Verbose "No Virtual network switch given."
   $SwitchList = Get-VMSwitch | Select-Object Name
   If ($SwitchList.Count -eq 1 ) {
-    Write-Warning "Using single Virtual switch found: '$($SwitchList.Name)'"
+    Write-Verbose "Using single Virtual switch found: '$($SwitchList.Name)'"
     $virtualSwitchName = $SwitchList.Name
   } elseif (Get-VMSwitch | Select-Object Name | Select-String "Default Switch") {
-    Write-Warning "Multiple Switches found; using found 'Default Switch'"
+    Write-Verbose "Multiple Switches found; using found 'Default Switch'"
     $virtualSwitchName = "Default Switch"
   }
 }
