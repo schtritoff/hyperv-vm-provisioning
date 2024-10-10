@@ -4,15 +4,14 @@
 ## Features
 - Provision Linux VM using cloud-init on Hyper-V in a single command
 - Use custom userdata yaml, see [examples](https://cloudinit.readthedocs.io/en/latest/topics/examples.html)
-- Using Ubuntu Cloud Images certified for Azure and proven to work reliably on Hyper-V (22.04 jammy, 20.04 focal, 18.04 bionic)
-  with [tailored Microsoft kernel](https://www.neowin.net/news/canonical--microsoft-make-azure-tailored-linux-kernel/) included
+- Using Ubuntu Cloud Images certified for Azure and proven to work reliably on Hyper-V with [tailored Microsoft kernel](https://www.neowin.net/news/canonical--microsoft-make-azure-tailored-linux-kernel/) included
 - Generation 1 for Azure migration friendliness or Generation 2 Hyper-V virtual machine type supported
 - Automatic update check for a newer image on provisioning
 - Works on Windows 10 and Hyper-V 2016
 
 ## Example usage
 ```powershell
-.\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "ubuntu-1" -ImageVersion "22.04" -VMGeneration 2 -ShowSerialConsoleWindow
+.\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "ubuntu-1" -ImageVersion "24.04" -VMGeneration 2 -ShowSerialConsoleWindow -KeyboardLayout en -ShowVmConnectWindow
 ```
 
 Parameter `ImageVersion` accepts the following values:
@@ -26,6 +25,24 @@ as needed: unattended use `-Force`, get some additional details `-Verbose` or to
 
 You should provide your own custom `userdata.yaml` as script parameter and customize the final image.
 
+## Prerequisites
+If you have fresh Windows installation please configure Hyper-V first.
+
+Make sure you have Hyper-V services enabled (run windows powershell as admin)
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
+```
+Add Hyper-V management tools
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Tools-All -All
+```
+Set up WSL if you plan to use Azure images ([source](https://learn.microsoft.com/en-us/windows/wsl/install#install-wsl-command))
+
+```bat
+wsl.exe --install
+wsl.exe --install --no-distribution
+```
+
 ## Download
 One line powershell command
 ```powershell
@@ -37,6 +54,10 @@ If you get error `ERROR Daemon /proc/net/route contains no routes` on serial
 console then you need to check if your VM has got and IP address - that is
 requirement for provisioning to work properly. You need to reboot VM after adding IP
 to finish with provisioning.
+
+If you had download, extracting or image conversion interruptions/failures try to clear cache folder and try again. It could be that local cache files are in dirty state.
+
+If in serial console you get messages 'Kernel panic - not syncing: VFS: Unable to mount root fs' you might have set too small VHD size. It is recommended to be at least 40 GB for recent Ubuntu Azure images.
 
 ## Similar projects and credits
 https://blogs.msdn.microsoft.com/virtual_pc_guy/2015/06/23/building-a-daily-ubuntu-image-for-hyper-v/
