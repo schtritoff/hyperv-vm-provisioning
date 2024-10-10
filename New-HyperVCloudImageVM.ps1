@@ -995,7 +995,8 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
     }
 
     # if not debugging then delete downloaded cloud image to save space. Once the image is extracted and converted to VHD it is not needed anymore
-    if ($PSBoundParameters.Debug -eq $false) {
+    if (-not [bool]($PSCmdlet.MyInvocation.BoundParameters["Debug"]).IsPresent) {
+      Write-Verbose "cache folder: about to delete all but txt and vhd files"
       Get-ChildItem "$($ImageCachePath)" -Exclude @("*.txt","*.vhd") | Remove-Item -Force
     }
 
