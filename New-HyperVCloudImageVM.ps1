@@ -147,10 +147,10 @@ Write-Verbose "Using temp path: $tempPath"
 $oscdimgPath = Join-Path $PSScriptRoot "tools\oscdimg\x64\oscdimg.exe"
 
 # Download qemu-img from here: http://www.cloudbase.it/qemu-img-windows/
-$qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img\qemu-img.exe"
+$qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img-4.1.0\qemu-img.exe"
 
 # Windows version of tar for extracting tar.gz files, src: https://github.com/libarchive/libarchive
-$bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar.exe"
+$bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar-3.7.6\bsdtar.exe"
 
 # Update this to the release of Image that you want
 # But Azure images can't be used because the waagent is trying to find ephemeral disk
