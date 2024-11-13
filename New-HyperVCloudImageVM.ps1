@@ -268,11 +268,11 @@ Switch ($ImageVersion) {
   }
   "10" {
     $_ = "buster"
-    $ImageVersion = "10"
   }
   "buster" {
     $ImageOS = "debian"
     $ImageVersionName = "buster"
+    $ImageVersion = "10"
     $ImageRelease = "latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # http://cloud.debian.org/images/cloud/buster/latest/debian-10-azure-amd64.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
@@ -285,11 +285,11 @@ Switch ($ImageVersion) {
   }
   "11" {
     $_ = "bullseye"
-    $ImageVersion = "11"
   }
   "bullseye" {
     $ImageOS = "debian"
     $ImageVersionName = "bullseye"
+    $ImageVersion = "11"
     $ImageRelease = "latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # http://cloud.debian.org/images/cloud/bullseye/latest/debian-11-azure-amd64.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
@@ -302,11 +302,11 @@ Switch ($ImageVersion) {
   }
   "12" {
     $_ = "bookworm"
-    $ImageVersion = "12"
   }
   "bookworm" {
     $ImageOS = "debian"
     $ImageVersionName = "bookworm"
+    $ImageVersion = "12"
     $ImageRelease = "latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # http://cloud.debian.org/images/cloud/bookworm/latest/debian-12-azure-amd64.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
