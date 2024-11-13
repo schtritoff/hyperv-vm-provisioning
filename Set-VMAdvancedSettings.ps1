@@ -37,6 +37,13 @@
 	.PARAMETER WhatIf
 		Performs normal WhatIf operations by displaying the change that would be made. However, the new BIOSGUID is automatically generated on each run. The one that WhatIf displays will not be used.
 	.NOTES
+	    Version 1.3
+		November 13th, 2024
+        Author: Martin Bijl
+        * see https://learn.microsoft.com/en-us/powershell/scripting/learn/ps101/07-working-with-wmi?view=powershell-7.4
+		* Update to Powershell 7 (on Windows)
+		* Use CIM instead of WMI
+
 		Version 1.2
 		July 25th, 2018
 		Author: Eric Siron
@@ -110,7 +117,7 @@
 		  {
 				param
 				(
-					 [Parameter(Mandatory=$true)][System.Management.ManagementObject]$VMSettings,
+					 [Parameter(Mandatory=$true)][Microsoft.Management.Infrastructure.CimInstance]$VMSettings,
 					 [Parameter(Mandatory=$true)][String]$PropertyName,
 					 [Parameter(Mandatory=$true)][String]$NewPropertyValue,
 					 [Parameter(Mandatory=$true)][String]$PropertyDisplayName,
@@ -119,79 +126,10 @@
 				$Message = 'Set "{0}" from {1} to {2}' -f $PropertyName, $VMSettings[($PropertyName)], $NewPropertyValue
 				Write-Verbose -Message $Message
 				$OutNull = $ConfirmText.AppendLine($Message)
-				$CurrentSettingsData[($PropertyName)] = $NewPropertyValue
+				$CurrentSettingsData.cimInstanceProperties[$PropertyName].Value = $NewPropertyValue
 				$OriginalValue = $CurrentSettingsData[($PropertyName)]
 		  }
-
-		<# adapted from http://blogs.msdn.com/b/taylorb/archive/2008/06/18/hyper-v-wmi-rich-error-messages-for-non-zero-returnvalue-no-more-32773-32768-32700.aspx #>
-		function Process-WMIJob
-		{
-			param
-			(
-				[Parameter(ValueFromPipeline=$true)][System.Management.ManagementBaseObject]$WmiResponse,
-				[Parameter()][String]$WmiClassPath = $null,
-				[Parameter()][String]$MethodName = $null,
-				[Parameter()][String]$VMName,
-				[Parameter()][String]$ComputerName
-			)
-	
-			process
-			{
-				$ErrorCode = 0
- 
-				if($WmiResponse.ReturnValue -eq 4096)
-				{
-					$Job = [WMI]$WmiResponse.Job
- 
-					while ($Job.JobState -eq 4)
-					{
-						Write-Progress -Activity ('Modifying virtual machine {0} on host {1}' -f $VMName, $ComputerName) -Status ('{0}% Complete' -f $Job.PercentComplete) -PercentComplete $Job.PercentComplete
-						Start-Sleep -Milliseconds 100
-						$Job.PSBase.Get()
-					}
- 
-					if($Job.JobState -ne 7)
-					{
-						if ($Job.ErrorDescription -ne "")
-						{
-							Write-Error -Message $Job.ErrorDescription
-							exit 1
-						}
-						else
-						{
-							$ErrorCode = $Job.ErrorCode
-						}
-						Write-Progress $Job.Caption "Completed" -Completed $true
-					}
-				}
-				elseif ($WmiResponse.ReturnValue -ne 0)
-				{
-					$ErrorCode = $WmiResponse.ReturnValue
-				}
- 
-				if($ErrorCode -ne 0)
-				{
-					if($WmiClassPath -and $MethodName)
-					{
-						$PSWmiClass = [WmiClass]$WmiClassPath
-						$PSWmiClass.PSBase.Options.UseAmendedQualifiers = $true
-						$MethodQualifiers = $PSWmiClass.PSBase.Methods[$MethodName].Qualifiers
-						$IndexOfError = [System.Array]::IndexOf($MethodQualifiers["ValueMap"].Value, [String]$ErrorCode)
-						if($IndexOfError -ne "-1")
-						{
-							Write-Error -Message ('Error Code: {0}, Method: {1}, Error: {2}' -f $ErrorCode, $MethodName, $MethodQualifiers["Values"].Value[$IndexOfError])
-							exit 1
-						}
-						else
-						{
-							Write-Error -Message ('Error Code: {0}, Method: {1}, Error: Message Not Found' -f $ErrorCode, $MethodName)
-							exit 1
-						}
-					}
-				}
-			}
-		}
-	}
+    }
 	process
 	{
 		$ConfirmText = New-Object System.Text.StringBuilder
@@ -231,14 +169,16 @@
 			}
 		}
 
-		Write-Verbose -Message ('Establishing WMI connection to Virtual Machine Management Service on {0}...' -f $ComputerName)
-		$VMMS = Get-WmiObject -ComputerName $ComputerName -Namespace 'root\virtualization\v2' -Class 'Msvm_VirtualSystemManagementService' -ErrorAction Stop
+		Write-Verbose -Message ('Establishing CIM connection to Virtual Machine Management Service on {0}...' -f $ComputerName)
+		$VMMS = Get-CIMInstance -ComputerName $ComputerName -Namespace 'root\virtualization\v2' -Class 'Msvm_VirtualSystemManagementService' -ErrorAction Stop
+
 		Write-Verbose -Message 'Acquiring an empty parameter object for the ModifySystemSettings function...'
-		$ModifySystemSettingsParams = $VMMS.GetMethodParameters('ModifySystemSettings')
+		$ModifySystemSettingsParams = $VMMS.CimClass.CimClassMethods["ModifySystemSettings"]
+
 		Write-Verbose -Message ('Establishing WMI connection to virtual machine {0}' -f $VMName)
 		if($VMObject -eq $null)
 		{
-			$VMObject = Get-WmiObject -ComputerName $ComputerName -Namespace 'root\virtualization\v2' -Class 'Msvm_ComputerSystem' -Filter ('ElementName = "{0}"' -f $VMName) -ErrorAction Stop
+			$VMObject = Get-CIMInstance -ComputerName $ComputerName -Namespace 'root\virtualization\v2' -Class 'Msvm_ComputerSystem' -Filter ('ElementName = "{0}"' -f $VMName) -ErrorAction Stop
 		}
 		if($VMObject -eq $null)
 		{
@@ -251,9 +191,13 @@
 		{
 			if($OriginalState -eq 2 -and ($Force.ToBool() -or $PSCmdlet.ShouldProcess($VMName, 'Shut down')))
 			{
-				$ShutdownComponent = $VMObject.GetRelated('Msvm_ShutdownComponent')
 				Write-Verbose -Message 'Initiating shutdown...'
-				Process-WMIJob -WmiResponse $ShutdownComponent.InitiateShutdown($true, 'Change BIOSGUID') -WmiClassPath $ShutdownComponent.ClassPath -MethodName 'InitiateShutdown' -VMName $VMName -ComputerName $ComputerName -ErrorAction Stop
+				
+				# Note: Stop-VM could be a simpler option
+				$VirtualizationComponent = $VMObject | Get-CimAssociatedInstance -Namespace "root/virtualization/v2"
+				$ShutdownComponent = $VirtualizationComponent | where { $_.cimclass.cimclassname -eq 'Msvm_ShutdownComponent' }
+				Invoke-CimMethod $shutdown -MethodName InitiateShutdown -Arguments  @{ "Force"=$true; "Reason"="Change BIOSGUID"}
+
 				# the InitiateShutdown function completes as soon as the guest's integration services respond; it does not wait for the power state change to complete
 				Write-Verbose -Message ('Waiting for virtual machine {0} to shut down...' -f $VMName)
 				$TimeoutCounterStarted = [datetime]::Now
@@ -270,7 +214,7 @@
 					{
 						Write-Progress -Activity ('Waiting for virtual machine {0} on {1} to stop' -f $VMName, $ComputerName) -Status ('{0}% timeout expiration' -f ($ElapsedPercent)) -PercentComplete $ElapsedPercent
 						Start-Sleep -Milliseconds 250
-						$VMObject.Get()
+						$VMObject = $VMObject | Get-CIMInstance
 					}
 				}
 			}
@@ -281,14 +225,14 @@
 			}
 		}
 		Write-Verbose -Message ('Retrieving all current settings for virtual machine {0}' -f $VMName)
-		$CurrentSettingsDataCollection = $VMObject.GetRelated('Msvm_VirtualSystemSettingData')
+		$CurrentSettingsDataCollection = $VMObject | Get-CimAssociatedInstance -Namespace "root/virtualization/v2" | where { $_.cimclass.cimclassname -eq 'Msvm_VirtualSystemSettingData' }
 		Write-Verbose -Message 'Extracting the settings data object from the settings data collection object...'
 		$CurrentSettingsData = $null
 		foreach($SettingsObject in $CurrentSettingsDataCollection)
 		{
 			if($VMObject.Name -eq $SettingsObject.ConfigurationID)
 			{
-				$CurrentSettingsData = [System.Management.ManagementObject]($SettingsObject)
+				$CurrentSettingsData =  [Microsoft.Management.Infrastructure.CimInstance]($SettingsObject)
 			}
 		}
 
@@ -318,17 +262,25 @@
 		}
 
 		Write-Verbose -Message 'Assigning modified data object as parameter for ModifySystemSettings function...'
-		$ModifySystemSettingsParams['SystemSettings'] = $CurrentSettingsData.GetText([System.Management.TextFormat]::CimDtd20)
 		if($Force.ToBool() -or $PSCmdlet.ShouldProcess($VMName, $ConfirmText.ToString()))
 		{
 			Write-Verbose -Message ('Instructing Virtual Machine Management Service to modify settings for virtual machine {0}' -f $VMName)
-			Process-WMIJob -WmiResponse ($VMMS.InvokeMethod('ModifySystemSettings', $ModifySystemSettingsParams, $null)) -WmiClassPath $VMMS.ClassPath -MethodName 'ModifySystemSettings' -VMName $VMName -ComputerName $ComputerName
+	
+			# the ModifySystemSettings uses a special format called "MOF".
+			$serializer = [Microsoft.Management.Infrastructure.Serialization.CimSerializer]::Create()
+			$SystemSettings = [System.Text.Encoding]::Unicode.GetString($serializer.Serialize($CurrentSettingsData, [Microsoft.Management.Infrastructure.Serialization.InstanceSerializationOptions]::None))
+		    
+		    $result = Invoke-CimMethod $VMMS -MethodName "ModifySystemSettings" -Arguments @{
+				SystemSettings = $SystemSettings
+			}
 		}
-		$VMObject.Get()
+		$VMObject = $VMObject | Get-CIMInstance
 		if($OriginalState -ne $VMObject.EnabledState)
 		{
 			Write-Verbose -Message ('Returning {0} to its prior running state.' -f $VMName)
-			Process-WMIJob -WmiResponse $VMObject.RequestStateChange($OriginalState) -WmiClassPath $VMObject.ClassPath -MethodName 'RequestStateChange' -VMName $VMName -ComputerName $ComputerName -ErrorAction Stop
+            $result = Invoke-CimMethod $VMObject -MethodName "RequestStateChange" -Arguments @{
+				RequestedState=$OriginalState
+			}
 		}
 	}
 #}  # uncomment this line and the first two lines to use as a profile or dot-sourced function
