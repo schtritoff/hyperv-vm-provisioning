@@ -24,7 +24,6 @@
 
 #requires -Modules Hyper-V
 #requires -RunAsAdministrator
-#requires -PSEdition Desktop
 
 [CmdletBinding()]
 param(
@@ -112,6 +111,23 @@ $ErrorActionPreference = 'Stop'
 # pwsh (powershell core): try to load module hyper-v
 if ($psversiontable.psversion.Major -ge 6) {
   Import-Module hyper-v -SkipEditionCheck
+}
+
+# pwsh 7:
+# - Provide a shim for Set-Content -Encoding Byte
+# - Enable Progress bar (disable for older versions)
+
+# The -Encoding value Byte has been removed from the filesystem provider
+# cmdlets in pwsh 7. A new parameter, -AsByteStream, is now used to specify that a
+# byte stream is required as input or that the output is a stream of bytes.
+
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+  function Set-ContentAsByteStream () { Set-Content @args -AsByteStream }
+} else {
+  function Set-ContentAsByteStream () { Set-Content @args -Encoding Byte }
+  # Disable progress indicator because it is causing Invoke-WebRequest to be very
+  # slow in Windows Powershell
+  $ProgressPreference = "SilentlyContinue"
 }
 
 # check if verbose is present, src: https://stackoverflow.com/a/25491281/1155121
@@ -825,12 +841,12 @@ datasource:
 mkdir -Path "$($tempPath)\Bits"  | out-null
 
 # Output metadata, networkconfig and userdata to file on disk
-Set-Content "$($tempPath)\Bits\meta-data" ([byte[]][char[]] "$metadata") -Encoding Byte
+Set-ContentAsByteStream "$($tempPath)\Bits\meta-data" ([byte[]][char[]] "$metadata") 
 if (($NetAutoconfig -eq $false) -and
    (($NetConfigType -ieq "v1") -or ($NetConfigType -ieq "v2"))) {
-  Set-Content "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") -Encoding Byte
+  Set-ContentAsByteStream "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") 
 }
-Set-Content "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") -Encoding Byte
+Set-ContentAsByteStream "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") 
 if ($ImageTypeAzure) {
   $ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
 }
@@ -865,9 +881,17 @@ if (test-path $BaseImageStampFile) {
   Write-Verbose "Timestamp from cache: $stamp"
 }
 if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
-  $stamp = (Invoke-WebRequest -UseBasicParsing "$($ImagePath).$($ImageManifestSuffix)").BaseResponse.LastModified.ToUniversalTime().ToString("yyyyMMddHHmmss")
-  Set-Content -path $BaseImageStampFile -value $stamp -force
-  Write-Verbose "Timestamp from web (new): $stamp"
+  $url = "$($ImagePath).$($ImageManifestSuffix)"
+
+  try {
+    $lastModified = (Invoke-WebRequest -TimeoutSec 12 -UseBasicParsing "$url").Headers.'Last-Modified'
+    $stamp=[DateTime]::Parse($lastModified).ToUniversalTime().ToString("yyyyMMddHHmmss")
+    Set-Content -path $BaseImageStampFile -value $stamp -force
+    Write-Verbose "Timestamp from web (new): $stamp"
+  } catch
+  {
+    Write-Verbose "Could not reach server: $url. We assume same timestamp: $stamp"
+  }
 }
 
 # check if local cached cloud image is the target one per $stamp
@@ -883,16 +907,22 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
 
     # get headers for content length
     Write-Host 'Check new image size ...' -NoNewline
-    $response = Invoke-WebRequest "$($ImagePath).$($ImageFileExtension)" -UseBasicParsing -Method Head
-    $downloadSize = [int]$response.Headers["Content-Length"]
+    $response = Invoke-WebRequest "$($ImagePath).$($ImageFileExtension)" -UseBasicParsing -Method Head -TimeoutSec 12
+    $contentLength = $response.Headers["Content-Length"]
+    # Note Content-Length can be a string[] in powershell 7
+    if ($contentLength -is [array]) {
+    	$contentLength = $contentLength[0]
+    }
+    $downloadSize = [int] $contentLength
+    
     Write-Host -ForegroundColor Green " Done."
 
     Write-Host "Downloading new Cloud image ($([int]($downloadSize / 1024 / 1024)) MB)..." -NoNewline
     Write-Verbose $(Get-Date)
-    $ProgressPreference = "SilentlyContinue" #Disable progress indicator because it is causing Invoke-WebRequest to be very slow
+
     # download new image
-    Invoke-WebRequest "$($ImagePath).$($ImageFileExtension)" -OutFile "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension).tmp" -UseBasicParsing
-    $ProgressPreference = "Continue" #Restore progress indicator.
+    Invoke-WebRequest "$($ImagePath).$($ImageFileExtension)" -OutFile "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension).tmp" -UseBasicParsing -TimeoutSec 10800
+
     # rename from .tmp to $($ImageFileExtension)
     Remove-Item "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)" -Force -ErrorAction 'SilentlyContinue'
     Rename-Item -path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension).tmp" `
@@ -1005,12 +1035,10 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
 
     if ($ConvertImageToNoCloud) {
       Write-Host 'Modify VHD and convert cloud-init to NoCloud ...' -NoNewline
-      $process = Start-Process `
-      -FilePath cmd.exe `
-      -Wait -PassThru -NoNewWindow `
-      -ArgumentList "/c `"`"$(Join-Path $PSScriptRoot "wsl-convert-vhd-nocloud.cmd")`" `"$($ImageCachePath)\$($ImageOS)-$($stamp).vhd`"`""
-      # https://stackoverflow.com/a/16018287/1155121
-      if ($process.ExitCode -ne 0) {
+
+      try {
+        .\Convert-VHDToNoCloud.ps1 "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
+      } catch {
         throw "Failed to modify/convert VHD to NoCloud DataSource!"
       }
       Write-Host -ForegroundColor Green " Done."
