@@ -18,7 +18,8 @@
   - https://gist.github.com/Informatic/0b6b24374b54d09c77b9d25595cdbd47
   - https://www.neowin.net/news/canonical--microsoft-make-azure-tailored-linux-kernel/
   - https://www.altaro.com/hyper-v/powershell-script-change-advanced-settings-hyper-v-virtual-machines/
-
+  - https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/supported-debian-virtual-machines-on-hyper-v
+  - https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/plan/should-i-create-a-generation-1-or-2-virtual-machine-in-hyper-v
   Recommended: choco install putty -y
 #>
 
@@ -1177,9 +1178,14 @@ if ($VMExposeVirtualizationExtensions) {
 
 # hyper-v gen2 specific features
 if ($VMGeneration -eq 2) {
-  Write-Verbose "Setting secureboot for Hyper-V Gen2..."
   # configure secure boot, src: https://www.altaro.com/hyper-v/hyper-v-2016-support-linux-secure-boot/
-  Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplateId ([guid]'272e7447-90a4-4563-a4b9-8e4ab00526ce')
+  if ($ImageVersion -eq "10") {
+    Write-Verbose "Disabling secureboot for Hyper-V Gen2 due to lacking support for Debian 10..."
+    Set-VMFirmware -VMName $VMName -EnableSecureBoot Off
+  } else {
+    Write-Verbose "Setting secureboot for Hyper-V Gen2..."
+    Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplateId ([guid]'272e7447-90a4-4563-a4b9-8e4ab00526ce')
+  }
 
   if ($(Get-VMHost).EnableEnhancedSessionMode -eq $true) {
     # Ubuntu 18.04+ supports enhanced session and so Debian 10/11
