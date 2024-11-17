@@ -3,11 +3,11 @@
 
 ## Features
 - Provision Linux VM using cloud-init on Hyper-V in a single command
-- Use custom userdata yaml, see [examples](https://cloudinit.readthedocs.io/en/latest/topics/examples.html)
+- Use custom userdata yaml, check [cloud-init documentation](https://cloudinit.readthedocs.io/en/stable/reference/examples.html)
 - Using Ubuntu Cloud Images certified for Azure and proven to work reliably on Hyper-V with [tailored Microsoft kernel](https://www.neowin.net/news/canonical--microsoft-make-azure-tailored-linux-kernel/) included
 - Generation 1 for Azure migration friendliness or Generation 2 Hyper-V virtual machine type supported
 - Automatic update check for a newer image on provisioning
-- Works on Windows 10 and Hyper-V 2016
+- Works on Windows 10, Hyper-V 2016 or later
 
 ## Example usage
 ```powershell
