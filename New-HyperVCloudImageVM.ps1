@@ -18,6 +18,7 @@
   - https://gist.github.com/Informatic/0b6b24374b54d09c77b9d25595cdbd47
   - https://www.neowin.net/news/canonical--microsoft-make-azure-tailored-linux-kernel/
   - https://www.altaro.com/hyper-v/powershell-script-change-advanced-settings-hyper-v-virtual-machines/
+  - https://github.com/TheDotSource/New-ISOFile
 
   Recommended: choco install putty -y
 #>
@@ -84,6 +85,10 @@ param(
   [switch] $ShowVmConnectWindow = $false,
   [switch] $Force = $false
 )
+
+# Include function New-ISOFile taken from: https://github.com/TheDotSource/New-ISOFile
+. "${PSScriptRoot}\tools\new-isofile\New-ISOFile.ps1"
+
 
 [System.Threading.Thread]::CurrentThread.CurrentUICulture = "en-US"
 [System.Threading.Thread]::CurrentThread.CurrentCulture = "en-US"
@@ -156,11 +161,6 @@ $VmMachineId = "{0:####-####-####-####}-{1:####-####-##}" -f (Get-Random -Minimu
 $tempPath = [System.IO.Path]::GetTempPath() + $vmMachineId
 mkdir -Path $tempPath | out-null
 Write-Verbose "Using temp path: $tempPath"
-
-# ADK Download - https://www.microsoft.com/en-us/download/confirmation.aspx?id=39982
-# You only need to install the deployment tools, src2: https://github.com/Studisys/Bootable-Windows-ISO-Creator
-#$oscdimgPath = "C:\Program Files (x86)\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-$oscdimgPath = Join-Path $PSScriptRoot "tools\oscdimg\x64\oscdimg.exe"
 
 # Download qemu-img from here: http://www.cloudbase.it/qemu-img-windows/
 $qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img-4.1.0\qemu-img.exe"
@@ -858,15 +858,10 @@ $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
 
-Start-Process `
-  -FilePath $oscdimgPath `
-  -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
-  -Wait -NoNewWindow `
-  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
-  -RedirectStandardError  "$($tempPath)\oscdimg-err.log"
+New-ISOFile  -Source "$($tempPath)\Bits" -DestinationIso "${metaDataIso}" -media "CDR" -Title "CIDATA"
 
 if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
-Write-Verbose "Metadata iso written"
+Write-Verbose "Metadata iso written in $metaDataIso"
 Write-Host -ForegroundColor Green " Done."
 
 # storage location for base images
