@@ -157,16 +157,14 @@ $tempPath = [System.IO.Path]::GetTempPath() + $vmMachineId
 mkdir -Path $tempPath | out-null
 Write-Verbose "Using temp path: $tempPath"
 
-# ADK Download - https://www.microsoft.com/en-us/download/confirmation.aspx?id=39982
-# You only need to install the deployment tools, src2: https://github.com/Studisys/Bootable-Windows-ISO-Creator
-#$oscdimgPath = "C:\Program Files (x86)\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-$oscdimgPath = Join-Path $PSScriptRoot "tools\oscdimg\x64\oscdimg.exe"
-
 # Download qemu-img from here: http://www.cloudbase.it/qemu-img-windows/
 $qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img-4.1.0\qemu-img.exe"
 
 # Windows version of tar for extracting tar.gz files, src: https://github.com/libarchive/libarchive
 $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar-3.7.6\bsdtar.exe"
+
+# Windows version of mkisofs
+$mkisofsPath = Join-Path $PSScriptRoot "\tools\mkisofs-3.01a13\mkisofs.exe"
 
 # Update this to the release of Image that you want
 # But Azure images can't be used because the waagent is trying to find ephemeral disk
@@ -853,20 +851,29 @@ if ($ImageTypeAzure) {
 
 # Create meta data ISO image, src: https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
 # both azure and nocloud support same cdrom filesystem https://github.com/canonical/cloud-init/blob/606a0a7c278d8c93170f0b5fb1ce149be3349435/cloudinit/sources/DataSourceAzure.py#L1972
+# "iso9660", "udf"
 Write-Host "Creating metadata iso for VM provisioning... " -NoNewline
 $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
 
-Start-Process `
-  -FilePath $oscdimgPath `
-  -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
-  -Wait -NoNewWindow `
-  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
-  -RedirectStandardError  "$($tempPath)\oscdimg-err.log"
+Push-Location "$($tempPath)\Bits\" | Out-Null
+# suppress warning mkisofs.exe: Warning: Cannot add inode hints with -no-cache-inodes.
+# $filesToAdd = ((Get-Item *).Name) -Join ","
+# Start-Process `
+#  -FilePath "$mkisofsPath" `
+#  -ArgumentList "-output","${metaDataIso}","-cache-inodes","-volid","cidata","-rational-rock","-joliet","-quiet","*" `
+#  -Wait -NoNewWindow `
+#  -RedirectStandardOutput "$($tempPath)\mkisofs.log" `
+#  -RedirectStandardError "$($tempPath)\mkisofs-err.log" `
+#  -ErrorAction "SilentlyContinue"
+
+ 
+& "$mkisofsPath" -output "${metaDataIso}" -cache-inodes -volid cidata -rational-rock -joliet -quiet *
+Pop-Location
 
 if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
-Write-Verbose "Metadata iso written"
+Write-Verbose "Metadata iso written in $metaDataIso"
 Write-Host -ForegroundColor Green " Done."
 
 # storage location for base images
