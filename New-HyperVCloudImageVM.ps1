@@ -382,7 +382,7 @@ if (!(test-path $VMStoragePath)) {New-Item -ItemType Directory -Path $VMStorageP
 # Delete the VM if it is around
 $vm = Get-VM -VMName $VMName -ErrorAction 'SilentlyContinue'
 if ($vm) {
-  & .\Cleanup-VM.ps1 $VMName -Force:$Force
+  & "${PSScriptRoot}\Cleanup-VM.ps1" $VMName -Force:$Force
 }
 
 # There is a documentation failure not mention needed dsmode setting:
@@ -1001,7 +1001,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
     }
 
     # since VHD's are sitting in the cache lets make them as small as posible
-    & .\Compact-VHD.ps1 -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
+    & "$PSScriptRoot\Compact-VHD.ps1" -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
 
     if ($ConvertImageToNoCloud) {
       Write-Host 'Modify VHD and convert cloud-init to NoCloud ...' -NoNewline
@@ -1213,14 +1213,14 @@ if ($ImageTypeAzure) {
   # set chassis asset tag to Azure constant as documented in https://github.com/canonical/cloud-init/blob/5e6ecc615318b48e2b14c2fd1f78571522848b4e/cloudinit/sources/helpers/azure.py#L1082
   Write-Host "Set Azure chasis asset tag ..." -NoNewline
   # https://social.technet.microsoft.com/Forums/en-US/d285d517-6430-49ba-b953-70ae8f3dce98/guest-asset-tag?forum=winserverhyperv
-  & .\Set-VMAdvancedSettings.ps1 -VM $VMName -ChassisAssetTag '7783-7084-3265-9085-8269-3286-77' -Force -Verbose:$verbose
+  & "$PSScriptRoot\Set-VMAdvancedSettings.ps1" -VM $VMName -ChassisAssetTag '7783-7084-3265-9085-8269-3286-77' -Force -Verbose:$verbose
   Write-Host -ForegroundColor Green " Done."
 
   # also try to enable NoCloud via SMBIOS  https://cloudinit.readthedocs.io/en/22.4.2/topics/datasources/nocloud.html
   $vmserial_smbios = 'ds=nocloud'
 }
 Write-Host "SMBIOS SN: $vmserial_smbios"
-& .\Set-VMAdvancedSettings.ps1 -VM $VMName -BIOSSerialNumber $vmserial_smbios -ChassisSerialNumber $vmserial_smbios -Force -Verbose:$verbose
+& "$PSScriptRoot\Set-VMAdvancedSettings.ps1" -VM $VMName -BIOSSerialNumber $vmserial_smbios -ChassisSerialNumber $vmserial_smbios -Force -Verbose:$verbose
 Write-Host -ForegroundColor Green " Done."
 
 # redirect com port to pipe for VM serial output, src: https://superuser.com/a/1276263/145585
