@@ -133,6 +133,7 @@ if ($PSVersionTable.PSVersion.Major -ge 7) {
 # check if verbose is present, src: https://stackoverflow.com/a/25491281/1155121
 $verbose = $VerbosePreference -ne 'SilentlyContinue'
 
+$ImageSupportsSecureBoot = $true
 # check if running hyper-v host version 8.0 or later
 # Get-VMHostSupportedVersion https://docs.microsoft.com/en-us/powershell/module/hyper-v/get-vmhostsupportedversion?view=win10-ps
 # or use vmms version: $vmms = Get-Command vmms.exe , $vmms.version. src: https://social.technet.microsoft.com/Forums/en-US/dce2a4ec-10de-4eba-a19d-ae5213a2382d/how-to-tell-version-of-hyperv-installed?forum=winserverhyperv
@@ -298,6 +299,7 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
     $ImageManifestSuffix = "json"
+    $ImageSupportsSecureBoot = $false
   }
   "11" {
     $_ = "bullseye"
@@ -1205,9 +1207,14 @@ if ($VMExposeVirtualizationExtensions) {
 
 # hyper-v gen2 specific features
 if ($VMGeneration -eq 2) {
-  Write-Verbose "Setting secureboot for Hyper-V Gen2..."
   # configure secure boot, src: https://www.altaro.com/hyper-v/hyper-v-2016-support-linux-secure-boot/
-  Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplateId ([guid]'272e7447-90a4-4563-a4b9-8e4ab00526ce')
+  if ($ImageSupportsSecureBoot) {
+    Write-Verbose "Setting secureboot for Hyper-V Gen2..."
+    Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplateId ([guid]'272e7447-90a4-4563-a4b9-8e4ab00526ce')
+  } else {
+    Write-Verbose "Disabling secureboot for Hyper-V Gen2..."
+    Set-VMFirmware -VMName $VMName -EnableSecureBoot Off
+  }
 
   if ($(Get-VMHost).EnableEnhancedSessionMode -eq $true) {
     # Ubuntu 18.04+ supports enhanced session and so Debian 10/11
