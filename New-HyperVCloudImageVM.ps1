@@ -1037,7 +1037,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd")) {
       Write-Host 'Modify VHD and convert cloud-init to NoCloud ...' -NoNewline
 
       try {
-        .\Convert-VHDToNoCloud.ps1 "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
+        & "$PSScriptRoot\Convert-VHDToNoCloud.ps1" "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd"
       } catch {
         throw "Failed to modify/convert VHD to NoCloud DataSource!"
       }

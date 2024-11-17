@@ -169,8 +169,14 @@
 			}
 		}
 
+		$CimSession = New-CimSession
+		if ($env:COMPUTERNAME -ne $ComputerName) {
+			# if you specify $ComputerName then make sure target computer (even if localhost) have WinRM/WSMan properly configured, check: https://learn.microsoft.com/en-us/powershell/module/cimcmdlets/get-ciminstance?view=powershell-7.4#description
+			$CimSession = New-CimSession -ComputerName $ComputerName
+		}
+
 		Write-Verbose -Message ('Establishing CIM connection to Virtual Machine Management Service on {0}...' -f $ComputerName)
-		$VMMS = Get-CIMInstance -ComputerName $ComputerName -Namespace 'root\virtualization\v2' -Class 'Msvm_VirtualSystemManagementService' -ErrorAction Stop
+		$VMMS = Get-CIMInstance -CimSession $CimSession -Namespace 'root\virtualization\v2' -Class 'Msvm_VirtualSystemManagementService' -ErrorAction Stop
 
 		Write-Verbose -Message 'Acquiring an empty parameter object for the ModifySystemSettings function...'
 		$ModifySystemSettingsParams = $VMMS.CimClass.CimClassMethods["ModifySystemSettings"]
@@ -178,7 +184,7 @@
 		Write-Verbose -Message ('Establishing WMI connection to virtual machine {0}' -f $VMName)
 		if($VMObject -eq $null)
 		{
-			$VMObject = Get-CIMInstance -ComputerName $ComputerName -Namespace 'root\virtualization\v2' -Class 'Msvm_ComputerSystem' -Filter ('ElementName = "{0}"' -f $VMName) -ErrorAction Stop
+			$VMObject = Get-CIMInstance -CimSession $CimSession -Namespace 'root\virtualization\v2' -Class 'Msvm_ComputerSystem' -Filter ('ElementName = "{0}"' -f $VMName) -ErrorAction Stop
 		}
 		if($VMObject -eq $null)
 		{
