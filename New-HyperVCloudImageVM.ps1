@@ -575,11 +575,11 @@ growpart:
   devices: [/]
   ignore_growroot_disabled: false
 
-#apt:
+apt:
 #  http_proxy: http://host:port
 #  https_proxy: http://host:port
+  preserve_sources_list: true
 
-preserve_sources_list: true
 package_update: true
 package_upgrade: true
 package_reboot_if_required: true
