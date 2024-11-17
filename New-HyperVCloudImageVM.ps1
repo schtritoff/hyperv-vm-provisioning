@@ -653,7 +653,7 @@ ssh_pwauth: true      # true: allow login with password; else only with setup pu
 # bootcmd can be setup like runcmd but would run at very early stage
 # on every cloud-init assisted boot if not prepended by command "cloud-init-per once|instance|always":
 $(if ($NetAutoconfig -eq $true) { "#" })bootcmd:
-$(if ($NetAutoconfig -eq $true) { "#" })  - [ cloud-init-per, once, fix-dhcp, sh, -c, sed -e 's/#timeout 60;/timeout 1;/g' -i /etc/dhcp/dhclient.conf ]
+$(if ($NetAutoconfig -eq $true) { "#" })  - [ cloud-init-per, once, fix-dhcp, sh, -c, "if test -f /etc/dhcp/dhclient.conf; then sed -e 's/#timeout 60;/timeout 1;/g' -i /etc/dhcp/dhclient.conf; fi" ]
 runcmd:
 $(if (($NetAutoconfig -eq $false) -and ($NetConfigType -ieq "ENI-file")) {
 "  # maybe condition OS based for Debian only and not ENI-file based?
