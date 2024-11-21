@@ -28,13 +28,13 @@
 [CmdletBinding()]
 param(
   [string] $VMName = "CloudVm",
-  [int] $VMGeneration = 1, # create gen1 hyper-v machine because of portability to Azure (https://docs.microsoft.com/en-us/azure/virtual-machines/windows/prepare-for-upload-vhd-image)
-  [int] $VMProcessorCount = 1,
+  [int] $VMGeneration = 2,
+  [int] $VMProcessorCount = 2,
   [bool] $VMDynamicMemoryEnabled = $false,
   [uint64] $VMMemoryStartupBytes = 1024MB,
   [uint64] $VMMinimumBytes = $VMMemoryStartupBytes,
   [uint64] $VMMaximumBytes = $VMMemoryStartupBytes,
-  [uint64] $VHDSizeBytes = 16GB,
+  [uint64] $VHDSizeBytes = 40GB,
   [string] $VirtualSwitchName = $null,
   [string] $VMVlanID = $null,
   [string] $VMNativeVlanID = $null,
@@ -75,7 +75,7 @@ param(
   [string] $GuestAdminPassword = "Passw0rd",
   [string] $GuestAdminSshPubKey,
   [string] $GuestAdminSshPubKeyFile,
-  [string] $ImageVersion = "20.04", # $ImageName ="focal" # 20.04 LTS , $ImageName="bionic" # 18.04 LTS
+  [string] $ImageVersion = "22.04", # $ImageName ="focal" # 20.04 LTS , $ImageName="bionic" # 18.04 LTS
   [string] $ImageRelease = "release", # default option is get latest but could be fixed to some specific version for example "release-20210413"
   [string] $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases", # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
   [bool] $BaseImageCheckForUpdate = $true, # check for newer image at Distro cloud-images site
