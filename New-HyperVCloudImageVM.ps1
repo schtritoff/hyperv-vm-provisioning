@@ -48,7 +48,7 @@ param(
   #[switch] $VMMaximumBandwidth = $null,
   [switch] $VMMacAddressSpoofing = $false,
   [switch] $VMExposeVirtualizationExtensions = $false,
-  [string] $VMVersion = "8.0", # version 8.0 for hyper-v 2016 compatibility , check all possible values with Get-VMHostSupportedVersion
+  [string] $VMVersion = $null, # version 8.0 for hyper-v 2016 compatibility, check all possible values with Get-VMHostSupportedVersion, see also: https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/deploy/upgrade-virtual-machine-version-in-hyper-v-on-windows-or-windows-server#what-happens-if-i-dont-upgrade-the-virtual-machine-configuration-version
   [string] $VMHostname = $VMName,
   [string] $VMMachine_StoragePath = $null, # if defined setup machine path with storage path as subfolder
   [string] $VMMachinePath = $null, # if not defined here default Virtal Machine path is used
@@ -1080,10 +1080,22 @@ try {
 
 # Create new virtual machine and start it
 Write-Host "Create VM..." -NoNewline
-$vm = new-vm -Name $VMName -MemoryStartupBytes $VMMemoryStartupBytes `
-               -Path "$VMMachinePath" `
-               -VHDPath "$VMDiskPath" -Generation $VMGeneration `
-               -BootDevice VHD -Version $VMVersion | out-null
+$NewVmParams = @{
+  Name = $VMName
+  MemoryStartupBytes = $VMMemoryStartupBytes
+  Path = $VMMachinePath
+  VHDPath = $VMDiskPath
+  Generation = $VMGeneration
+  BootDevice = "VHD"
+}
+
+# if no VM version specified in the script parameter it will create with latest possible one
+if (-not [string]::IsNullOrEmpty($VMVersion)) {
+  $NewVmParams.Version = $VMVersion
+}
+
+$vm = New-VM @NewVmParams
+
 Set-VMProcessor -VMName $VMName -Count $VMProcessorCount
 If ($VMDynamicMemoryEnabled) {
   Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $VMDynamicMemoryEnabled -MaximumBytes $VMMaximumBytes -MinimumBytes $VMMinimumBytes
