@@ -1138,6 +1138,11 @@ if (($null -ne $VMStaticMacAddress) -and ($VMStaticMacAddress -ne "")) {
 
 $VMNetworkAdapter = Get-VMNetworkAdapter -VMName $VMName
 $VMNetworkAdapterName = $VMNetworkAdapter.Name
+
+# rename network adapter
+Rename-VMNetworkAdapter -VMName $VMName -Name $VMNetworkAdapterName -NewName $($VMNetworkAdapterName + " " + $NetInterface)
+$VMNetworkAdapterName = $($VMNetworkAdapterName + " " + $NetInterface)
+
 If ((($null -ne $VMVlanID) -and ([int]($VMVlanID) -ne 0)) -or
    ((($null -ne $VMNativeVlanID) -and ([int]($VMNativeVlanID) -ne 0)) -and
     (($null -ne $VMAllowedVlanIDList) -and ($VMAllowedVlanIDList -ne "")))) {
