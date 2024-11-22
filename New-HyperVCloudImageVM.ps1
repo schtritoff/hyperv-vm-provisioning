@@ -158,11 +158,6 @@ $tempPath = [System.IO.Path]::GetTempPath() + $vmMachineId
 mkdir -Path $tempPath | out-null
 Write-Verbose "Using temp path: $tempPath"
 
-# ADK Download - https://www.microsoft.com/en-us/download/confirmation.aspx?id=39982
-# You only need to install the deployment tools, src2: https://github.com/Studisys/Bootable-Windows-ISO-Creator
-#$oscdimgPath = "C:\Program Files (x86)\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-$oscdimgPath = Join-Path $PSScriptRoot "tools\oscdimg\x64\oscdimg.exe"
-
 # Download qemu-img from here: http://www.cloudbase.it/qemu-img-windows/
 $qemuImgPath = Join-Path $PSScriptRoot "tools\qemu-img-4.1.0\qemu-img.exe"
 
@@ -860,12 +855,7 @@ $metaDataIso = "$($VMStoragePath)\$($VMName)-metadata.iso"
 Write-Verbose "Filename: $metaDataIso"
 cleanupFile $metaDataIso
 
-Start-Process `
-  -FilePath $oscdimgPath `
-  -ArgumentList  "`"$($tempPath)\Bits`"","`"$metaDataIso`"","-lCIDATA","-d","-n" `
-  -Wait -NoNewWindow `
-  -RedirectStandardOutput "$($tempPath)\oscdimg.log" `
-  -RedirectStandardError  "$($tempPath)\oscdimg-err.log"
+& "$PSScriptRoot\New-ISOFile.ps1" -source "$tempPath\Bits" -title "CIDATA" -media "DISK" -destinationIso "$metaDataIso" 1> $null
 
 if (!(test-path "$metaDataIso")) {throw "Error creating metadata iso"}
 Write-Verbose "Metadata iso written"
