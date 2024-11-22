@@ -3,7 +3,7 @@
   Provision Cloud images on Hyper-V
 .EXAMPLE
   PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 60GB -VMName "azure-1" -ImageVersion "jammy-azure" -VMGeneration 2
-  PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 8GB -VMName "azure-2" -ImageVersion "testing-azure" -VirtualSwitchName "SWBRIDGE" -VMGeneration 2 -VMMachine_StoragePath "D:\HyperV" -NetAddress 192.168.2.22/24 -NetGateway 192.168.2.1 -NameServers "192.168.2.1" -ShowSerialConsoleWindow -ShowVmConnectWindow
+  PS C:\> .\New-HyperVCloudImageVM.ps1 -VMProcessorCount 2 -VMMemoryStartupBytes 2GB -VHDSizeBytes 8GB -VMName "azure-2" -ImageVersion "13-azure" -VirtualSwitchName "SWBRIDGE" -VMGeneration 2 -VMMachine_StoragePath "D:\HyperV" -NetAddress 192.168.2.22/24 -NetGateway 192.168.2.1 -NameServers "192.168.2.1" -ShowSerialConsoleWindow -ShowVmConnectWindow
   It should download cloud image and create VM, please be patient for first boot - it could take 10 minutes
   and requires network connection on VM
 .NOTES
@@ -172,7 +172,6 @@ $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar-3.7.6\bsdtar.exe"
 Switch ($ImageVersion) {
   "18.04" {
     $_ = "bionic"
-    $ImageVersion = "18.04"
   }
   "bionic" {
     $ImageOS = "ubuntu"
@@ -185,11 +184,10 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "img"
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
   }
   "20.04" {
     $_ = "focal"
-    $ImageVersion = "20.04"
   }
   "focal" {
     $ImageOS = "ubuntu"
@@ -202,11 +200,10 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "img"
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
   }
   "22.04" {
     $_ = "jammy"
-    $ImageVersion = "22.04"
   }
   "jammy" {
     $ImageOS = "ubuntu"
@@ -219,17 +216,16 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "img"
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
   }
   "22.04-azure" {
     $_ = "jammy-azure"
-    $ImageVersion = "22.04-azure"
   }
   "jammy-azure" {
     $ImageTypeAzure = $true
     $ConvertImageToNoCloud = $true
     $ImageOS = "ubuntu"
-    #$ImageVersion = "22.04"
+    $ImageVersion = "22.04-azure"
     #$ImageVersionName = "jammy"
     $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-azure.vhd.tar.gz
@@ -239,11 +235,10 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "vhd.tar.gz" # or "vhd.zip" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "vhd.manifest"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).vhd.manifest"
   }
   "24.04" {
     $_ = "noble"
-    $ImageVersion = "24.04"
   }
   "noble" {
     $ImageOS = "ubuntu"
@@ -256,18 +251,17 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "img"
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "manifest"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
   }
   "24.04-azure" {
     $_ = "noble-azure"
-    $ImageVersion = "24.04-azure"
   }
   "noble-azure" {
     $ImageTypeAzure = $true
     $ConvertImageToNoCloud = $true
     $ImageOS = "ubuntu"
-    #$ImageVersion = "24.04"
-    #$ImageVersionName = "noble"
+    $ImageVersion = "24.04-azure"
+    $ImageVersionName = "noble"
     $ImageRelease = "release" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-azure.vhd.tar.gz
     $ImageBaseUrl = "http://cloud-images.ubuntu.com/releases" # alternative https://mirror.scaleuptech.com/ubuntu-cloud-images/releases
@@ -276,7 +270,7 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "vhd.tar.gz" # or "vhd.zip" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
-    $ImageManifestSuffix = "vhd.manifest"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).vhd.manifest"
   }
   "10" {
     $_ = "buster"
@@ -293,7 +287,7 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
     $ImageSupportsSecureBoot = $false
   }
   "11" {
@@ -311,7 +305,7 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
   }
   "12" {
     $_ = "bookworm"
@@ -328,27 +322,27 @@ Switch ($ImageVersion) {
     $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
   }
-  "testing-azure" {
+  "13-azure" {
     $_ = "trixie-azure"
-    $ImageVersion = "trixie"
   }
   "trixie-azure" {
     $ImageTypeAzure = $true
     $ConvertImageToNoCloud = $true
     $ImageOS = "debian"
     $ImageVersionName = "trixie"
+    $ImageVersion = "13-azure"
     $ImageRelease = "daily/latest" # default option is get latest but could be fixed to some specific version for example "release-20210413"
     # http://cloud.debian.org/images/cloud/trixie/daily/latest/debian-trixie-azure-amd64-daily.tar.xz
     $ImageBaseUrl = "http://cloud.debian.org/images/cloud"
     $ImageUrlRoot = "$ImageBaseUrl/$ImageVersionName/$ImageRelease/"
     #$ImageFileName = "$ImageOS-$ImageVersion-nocloud-amd64" # should contain "raw" version
     $ImageFileName = "$ImageOS-13-azure-amd64-daily" # should contain "raw" version
-    $ImageFileExtension = "tar.xz" # or "vhd.tar.gz" on older releases
+    $ImageFileExtension = "tar.xz"
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
-    $ImageManifestSuffix = "json"
+    $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
   }
   default {throw "Image version $ImageVersion not supported."}
 }
@@ -873,7 +867,7 @@ if (test-path $BaseImageStampFile) {
   Write-Verbose "Timestamp from cache: $stamp"
 }
 if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
-  $url = "$($ImagePath).$($ImageManifestSuffix)"
+  $url = $ImageManifestUrl
 
   try {
     $lastModified = (Invoke-WebRequest -TimeoutSec 12 -UseBasicParsing "$url").Headers.'Last-Modified'
@@ -924,7 +918,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
     # check file hash
     Write-Host "Checking file hash for downloaded image..." -NoNewline
     Write-Verbose $(Get-Date)
-    $hashSums = [System.Text.Encoding]::UTF8.GetString((Invoke-WebRequest $ImageHashPath -UseBasicParsing).Content)
+      $hashSums = [System.Text.Encoding]::UTF8.GetString((Invoke-WebRequest $ImageHashPath -UseBasicParsing).Content)
     Switch -Wildcard ($ImageHashPath) {
       '*SHA256*' {
         $fileHash = Get-FileHash "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)" -Algorithm SHA256

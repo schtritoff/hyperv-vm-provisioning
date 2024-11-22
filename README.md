@@ -16,7 +16,7 @@
 
 Parameter `ImageVersion` accepts the following values:
  - Ubuntu: `"18.04"`, `"20.04"`, `"22.04"`, `"22.04-azure"`, `"24.04"`, `"24.04-azure"`
- - Debian: `"10"`, `"11"`
+ - Debian: `"10"`, `"11"`, `"12"`
 
 Remark/Disclaimer: Azure image types by default supports `DataSourceAzure` cloud-init type which expects Azure environment. Since we are not emulating Azure cloud-init environment the only way to use those images is to converting those images to `NoCloud` datasource - this requires at least Windows 11 build 22000 because it uses wsl --mount (see [wsl-convert-vhd-nocloud.cmd](wsl-convert-vhd-nocloud.cmd)).
 
