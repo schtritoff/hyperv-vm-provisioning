@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Provision Cloud images on Hyper-V
 .EXAMPLE
@@ -154,7 +154,7 @@ $FQDN = $VMHostname.ToLower() + "." + $DomainName.ToLower()
 # src: https://stackoverflow.com/a/67077483/1155121
 # $vmMachineId = [Guid]::NewGuid().ToString()
 $VmMachineId = "{0:####-####-####-####}-{1:####-####-##}" -f (Get-Random -Minimum 1000000000000000 -Maximum 9999999999999999),(Get-Random -Minimum 1000000000 -Maximum 9999999999)
-$tempPath = [System.IO.Path]::GetTempPath() + $vmMachineId
+$tempPath = [System.IO.Path]::GetTempPath() + "hv-" + $vmMachineId
 mkdir -Path $tempPath | out-null
 Write-Verbose "Using temp path: $tempPath"
 
@@ -887,6 +887,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
     Write-Verbose $(Get-Date)
 
     # download new image
+    Write-Verbose "url=$($ImagePath).$($ImageFileExtension)"
     Invoke-WebRequest "$($ImagePath).$($ImageFileExtension)" -OutFile "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension).tmp" -UseBasicParsing -TimeoutSec 10800
 
     # rename from .tmp to $($ImageFileExtension)
