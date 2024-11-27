@@ -89,4 +89,6 @@ Write-Verbose "::: Unmount VHD from Windows ..."
 diskpart /s "${PSScriptRoot}/diskpart-unmount.txt"
 
 #:CLEANUP
-Remove-Item "${PSScriptRoot}/diskpart-*.txt"
+if (-not [bool]($PSCmdlet.MyInvocation.BoundParameters["Debug"]).IsPresent) {
+    Remove-Item "$TempPath/diskpart-*.txt"
+}
