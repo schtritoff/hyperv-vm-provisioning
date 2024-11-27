@@ -1,4 +1,4 @@
-#function Set-VMAdvancedSettings # uncomment this line, the second line, and the last line to use as a profile or dot-sourced function
+﻿#function Set-VMAdvancedSettings # uncomment this line, the second line, and the last line to use as a profile or dot-sourced function
 #{ # uncomment this line, the first line, and the last line to use as a profile or dot-sourced function
 	<#
 	.SYNOPSIS
@@ -56,7 +56,7 @@
 		Version 1.1: Fixed incorrect verbose outputs. No functionality changes.
 	.EXAMPLE
 		Set-VMAdvancedSettings -VM svtest -AutoGenBIOSGUID
-		
+
 		Replaces the BIOS GUID on the virtual machine named svtest with an automatically-generated ID.
 
 	.EXAMPLE
@@ -83,12 +83,12 @@
 		Set-VMAdvancedSettings -VM svtest -NewBIOSGUID $Guid -BaseBoardSerialNumber '42' -BIOSSerialNumber '42' -ChassisAssetTag '42' -ChassisSerialNumber '42'
 
 		Modifies all settings that this function can affect.
-	
+
 	.EXAMPLE
 		Set-VMAdvancedSettings -VM svtest -AutoGenBIOSGUID -WhatIf
 
 		Shows HOW the BIOS GUID will be changed, but the displayed GUID will NOT be recycled if you run it again without WhatIf. TIP: Use this to view the current BIOS GUID without changing it.
-	
+
 	.EXAMPLE
 		Set-VMAdvancedSettings -VM svtest -NewBIOSGUID $Guid -BaseBoardSerialNumber '42' -BIOSSerialNumber '42' -ChassisAssetTag '42' -ChassisSerialNumber '42' -WhatIf
 
@@ -113,7 +113,7 @@
 
 	begin
 	{
-		  function Change-VMSetting
+		  function Update-VMSetting
 		  {
 				param
 				(
@@ -156,7 +156,7 @@
 			exit 1
 		}
 
-		if($NewBIOSGUID -ne $null)
+		if($null -ne $NewBIOSGUID)
 		{
 			try
 			{
@@ -182,11 +182,11 @@
 		$ModifySystemSettingsParams = $VMMS.CimClass.CimClassMethods["ModifySystemSettings"]
 
 		Write-Verbose -Message ('Establishing WMI connection to virtual machine {0}' -f $VMName)
-		if($VMObject -eq $null)
+		if($null -eq $VMObject)
 		{
 			$VMObject = Get-CIMInstance -CimSession $CimSession -Namespace 'root\virtualization\v2' -Class 'Msvm_ComputerSystem' -Filter ('ElementName = "{0}"' -f $VMName) -ErrorAction Stop
 		}
-		if($VMObject -eq $null)
+		if($null -eq $VMObject)
 		{
 			Write-Error -Message ('Virtual machine {0} not found on computer {1}' -f $VMName, $ComputerName)
 			exit 1
@@ -198,10 +198,10 @@
 			if($OriginalState -eq 2 -and ($Force.ToBool() -or $PSCmdlet.ShouldProcess($VMName, 'Shut down')))
 			{
 				Write-Verbose -Message 'Initiating shutdown...'
-				
+
 				# Note: Stop-VM could be a simpler option
 				$VirtualizationComponent = $VMObject | Get-CimAssociatedInstance -Namespace "root/virtualization/v2"
-				$ShutdownComponent = $VirtualizationComponent | where { $_.cimclass.cimclassname -eq 'Msvm_ShutdownComponent' }
+				$ShutdownComponent = $VirtualizationComponent | Where-Object { $_.cimclass.cimclassname -eq 'Msvm_ShutdownComponent' }
 				Invoke-CimMethod $shutdown -MethodName InitiateShutdown -Arguments  @{ "Force"=$true; "Reason"="Change BIOSGUID"}
 
 				# the InitiateShutdown function completes as soon as the guest's integration services respond; it does not wait for the power state change to complete
@@ -231,7 +231,7 @@
 			}
 		}
 		Write-Verbose -Message ('Retrieving all current settings for virtual machine {0}' -f $VMName)
-		$CurrentSettingsDataCollection = $VMObject | Get-CimAssociatedInstance -Namespace "root/virtualization/v2" | where { $_.cimclass.cimclassname -eq 'Msvm_VirtualSystemSettingData' }
+		$CurrentSettingsDataCollection = $VMObject | Get-CimAssociatedInstance -Namespace "root/virtualization/v2" | Where-Object { $_.cimclass.cimclassname -eq 'Msvm_VirtualSystemSettingData' }
 		Write-Verbose -Message 'Extracting the settings data object from the settings data collection object...'
 		$CurrentSettingsData = $null
 		foreach($SettingsObject in $CurrentSettingsDataCollection)
@@ -248,34 +248,34 @@
 			{
 				$NewBIOSGUID = [System.Guid]::NewGuid().ToString()
 			}
-			Change-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'BIOSGUID' -NewPropertyValue (('{{{0}}}' -f $NewBIOSGUID).ToUpper()) -PropertyDisplayName 'BIOSGUID' -ConfirmText $ConfirmText
+			Update-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'BIOSGUID' -NewPropertyValue (('{{{0}}}' -f $NewBIOSGUID).ToUpper()) -PropertyDisplayName 'BIOSGUID' -ConfirmText $ConfirmText
 		}
 		if($BaseBoardSerialNumber)
 		{
-			Change-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'BaseboardSerialNumber' -NewPropertyValue $BaseBoardSerialNumber -PropertyDisplayName 'baseboard serial number' -ConfirmText $ConfirmText
+			Update-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'BaseboardSerialNumber' -NewPropertyValue $BaseBoardSerialNumber -PropertyDisplayName 'baseboard serial number' -ConfirmText $ConfirmText
 		}
 		if($BIOSSerialNumber)
 		{
-			Change-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'BIOSSerialNumber' -NewPropertyValue $BIOSSerialNumber -PropertyDisplayName 'BIOS serial number' -ConfirmText $ConfirmText
+			Update-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'BIOSSerialNumber' -NewPropertyValue $BIOSSerialNumber -PropertyDisplayName 'BIOS serial number' -ConfirmText $ConfirmText
 		}
 		if($ChassisAssetTag)
 		{
-			Change-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'ChassisAssetTag' -NewPropertyValue $ChassisAssetTag -PropertyDisplayName 'chassis asset tag' -ConfirmText $ConfirmText
+			Update-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'ChassisAssetTag' -NewPropertyValue $ChassisAssetTag -PropertyDisplayName 'chassis asset tag' -ConfirmText $ConfirmText
 		}
 		if($ChassisSerialNumber)
 		{
-			Change-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'ChassisSerialNumber' -NewPropertyValue $ChassisSerialNumber -PropertyDisplayName 'chassis serial number' -ConfirmText $ConfirmText
+			Update-VMSetting -VMSettings $CurrentSettingsData -PropertyName 'ChassisSerialNumber' -NewPropertyValue $ChassisSerialNumber -PropertyDisplayName 'chassis serial number' -ConfirmText $ConfirmText
 		}
 
 		Write-Verbose -Message 'Assigning modified data object as parameter for ModifySystemSettings function...'
 		if($Force.ToBool() -or $PSCmdlet.ShouldProcess($VMName, $ConfirmText.ToString()))
 		{
 			Write-Verbose -Message ('Instructing Virtual Machine Management Service to modify settings for virtual machine {0}' -f $VMName)
-	
+
 			# the ModifySystemSettings uses a special format called "MOF".
 			$serializer = [Microsoft.Management.Infrastructure.Serialization.CimSerializer]::Create()
 			$SystemSettings = [System.Text.Encoding]::Unicode.GetString($serializer.Serialize($CurrentSettingsData, [Microsoft.Management.Infrastructure.Serialization.InstanceSerializationOptions]::None))
-		    
+
 		    $result = Invoke-CimMethod $VMMS -MethodName "ModifySystemSettings" -Arguments @{
 				SystemSettings = $SystemSettings
 			}

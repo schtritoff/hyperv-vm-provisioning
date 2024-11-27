@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Create an ISO file from a source folder.
 
@@ -96,7 +96,7 @@ process {
     using System;
     using System.Runtime.InteropServices;
     using System.Runtime.InteropServices.ComTypes;
-    
+
     public class ISOFile {
         public static void Create(string path, object comStream, int blockSize, int totalBlocks) {
             byte[] buffer = new byte[blockSize];
@@ -296,9 +296,9 @@ process {
 
         # modifiers needed for cloud-init https://cloudinit.readthedocs.io/en/latest/reference/datasources/nocloud.html#source-2-drive-with-labeled-filesystem
         $Image.FileSystemsToCreate = $filesystem # ISO9660 + Joliet file system https://learn.microsoft.com/en-us/windows/win32/api/imapi2fs/ne-imapi2fs-fsifilesystems
-        $Image.ISO9660InterchangeLevel = 2 # ISO 9660 Level 2 permits longer file names https://learn.microsoft.com/en-us/windows/win32/imapi/disc-formats 
+        $Image.ISO9660InterchangeLevel = 2 # ISO 9660 Level 2 permits longer file names https://learn.microsoft.com/en-us/windows/win32/imapi/disc-formats
         $Image.GetDefaultFileSystemForImport($filesystem)
-        
+
         $result = $Image.CreateResultImage()
         [ISOFile]::Create($targetFile.FullName,$result.ImageStream,$result.BlockSize,$result.TotalBlocks)
     } # try

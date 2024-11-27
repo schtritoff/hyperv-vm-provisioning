@@ -12,7 +12,7 @@
 # - https://ss64.com/nt/for_cmd.html
 # - https://learn.microsoft.com/en-us/windows/wsl/wsl2-mount-disk
 # - https://craigloewen-msft.github.io/WSLTipsAndTricks/tip/use-pipe-in-one-line-command.html
-# - https://github.com/microsoft/WSL/issues/10177 
+# - https://github.com/microsoft/WSL/issues/10177
 
 [CmdletBinding()]
 param (
@@ -20,7 +20,7 @@ param (
     [String] $VHDPath
 )
 
-$VHDPath = (Get-Item $VHDPath | Resolve-Path).ProviderPath 
+$VHDPath = (Get-Item $VHDPath | Resolve-Path).ProviderPath
 
 
 Write-Verbose "::: Prerequisites check ..."
@@ -43,7 +43,7 @@ if (! $wsl_has_mount_option) {
 see #https://learn.microsoft.com/en-us/windows/wsl/wsl2-mount-disk
 You will need to be on Windows 11 Build 22000 or later, or be running the Microsoft Store version of WSL.
 To check your WSL and Windows version, use the command: wsl.exe --version
-"@    
+"@
 }
 
 

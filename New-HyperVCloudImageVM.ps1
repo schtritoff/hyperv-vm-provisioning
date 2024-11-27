@@ -170,10 +170,7 @@ $bsdtarPath = Join-Path $PSScriptRoot "tools\bsdtar-3.7.6\bsdtar.exe"
 # https://docs.microsoft.com/en-us/troubleshoot/azure/virtual-machines/cloud-init-deployment-delay
 # and also somehow causing at sshd restart in password setting task to stuck for 30 minutes.
 Switch ($ImageVersion) {
-  "18.04" {
-    $_ = "bionic"
-  }
-  "bionic" {
+  { "18.04", "bionic" -eq $_ } {
     $ImageOS = "ubuntu"
     $ImageVersionName = "bionic"
     $ImageVersion = "18.04"
@@ -185,11 +182,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
+    break
   }
-  "20.04" {
-    $_ = "focal"
-  }
-  "focal" {
+  { "20.04", "focal" -eq $_ } {
     $ImageOS = "ubuntu"
     $ImageVersionName = "focal"
     $ImageVersion = "20.04"
@@ -201,11 +196,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
+    break
   }
-  "22.04" {
-    $_ = "jammy"
-  }
-  "jammy" {
+  { "22.04", "jammy" -eq $_ } {
     $ImageOS = "ubuntu"
     $ImageVersionName = "jammy"
     $ImageVersion = "22.04"
@@ -217,11 +210,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
+    break
   }
-  "22.04-azure" {
-    $_ = "jammy-azure"
-  }
-  "jammy-azure" {
+  { "22.04-azure", "jammy-azure" -eq $_ } {
     $ImageTypeAzure = $true
     $ConvertImageToNoCloud = $true
     $ImageOS = "ubuntu"
@@ -236,11 +227,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).vhd.manifest"
+    break
   }
-  "24.04" {
-    $_ = "noble"
-  }
-  "noble" {
+  { "24.04", "noble" -eq $_ } {
     $ImageOS = "ubuntu"
     $ImageVersionName = "noble"
     $ImageVersion = "24.04"
@@ -252,11 +241,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).manifest"
+    break
   }
-  "24.04-azure" {
-    $_ = "noble-azure"
-  }
-  "noble-azure" {
+  { "24.04-azure", "noble-azure" -eq $_ } {
     $ImageTypeAzure = $true
     $ConvertImageToNoCloud = $true
     $ImageOS = "ubuntu"
@@ -271,11 +258,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA256SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).vhd.manifest"
+    break
   }
-  "10" {
-    $_ = "buster"
-  }
-  "buster" {
+  { "10", "buster" -eq $_ } {
     $ImageOS = "debian"
     $ImageVersionName = "buster"
     $ImageVersion = "10"
@@ -289,11 +274,9 @@ Switch ($ImageVersion) {
     $ImageHashFileName = "SHA512SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
     $ImageSupportsSecureBoot = $false
+    break
   }
-  "11" {
-    $_ = "bullseye"
-  }
-  "bullseye" {
+  { "11", "bullseye" -eq $_ } {
     $ImageOS = "debian"
     $ImageVersionName = "bullseye"
     $ImageVersion = "11"
@@ -306,11 +289,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
+    break
   }
-  "12" {
-    $_ = "bookworm"
-  }
-  "bookworm" {
+  { "12", "bookworm" -eq $_ } {
     $ImageOS = "debian"
     $ImageVersionName = "bookworm"
     $ImageVersion = "12"
@@ -323,11 +304,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
+    break
   }
-  "13-azure" {
-    $_ = "trixie-azure"
-  }
-  "trixie-azure" {
+  { "13-azure", "trixie-azure" -eq $_ } {
     $ImageTypeAzure = $true
     $ConvertImageToNoCloud = $true
     $ImageOS = "debian"
@@ -343,8 +322,9 @@ Switch ($ImageVersion) {
     # Manifest file is used for version check based on last modified HTTP header
     $ImageHashFileName = "SHA512SUMS"
     $ImageManifestUrl = "$($ImageUrlRoot)$($ImageFileName).json"
+    break
   }
-  default {throw "Image version $ImageVersion not supported."}
+  default {throw "Image version $_ is not supported."}
 }
 
 $ImagePath = "$($ImageUrlRoot)$($ImageFileName)"
@@ -832,12 +812,12 @@ datasource:
 mkdir -Path "$($tempPath)\Bits"  | out-null
 
 # Output metadata, networkconfig and userdata to file on disk
-Set-ContentAsByteStream "$($tempPath)\Bits\meta-data" ([byte[]][char[]] "$metadata") 
+Set-ContentAsByteStream "$($tempPath)\Bits\meta-data" ([byte[]][char[]] "$metadata")
 if (($NetAutoconfig -eq $false) -and
    (($NetConfigType -ieq "v1") -or ($NetConfigType -ieq "v2"))) {
-  Set-ContentAsByteStream "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig") 
+  Set-ContentAsByteStream "$($tempPath)\Bits\network-config" ([byte[]][char[]] "$networkconfig")
 }
-Set-ContentAsByteStream "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata") 
+Set-ContentAsByteStream "$($tempPath)\Bits\user-data" ([byte[]][char[]] "$userdata")
 if ($ImageTypeAzure) {
   $ovfenvxml.Save("$($tempPath)\Bits\ovf-env.xml");
 }
@@ -882,7 +862,7 @@ if ($BaseImageCheckForUpdate -or ($stamp -eq '')) {
 
 # check if local cached cloud image is the target one per $stamp
 if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)") `
-  -and !(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd") # download only if VHD of requested $stamp version is not present in cache 
+  -and !(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd") # download only if VHD of requested $stamp version is not present in cache
 ) {
   try {
     # If we do not have a matching image - delete the old ones and download the new one
@@ -900,7 +880,7 @@ if (!(test-path "$($ImageCachePath)\$($ImageOS)-$($stamp).$($ImageFileExtension)
     	$contentLength = $contentLength[0]
     }
     $downloadSize = [int] $contentLength
-    
+
     Write-Host -ForegroundColor Green " Done."
 
     Write-Host "Downloading new Cloud image ($([int]($downloadSize / 1024 / 1024)) MB)..." -NoNewline
