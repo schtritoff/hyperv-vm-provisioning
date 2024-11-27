@@ -1032,14 +1032,15 @@ try {
   # block size bytes per recommendation https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/best-practices-for-running-linux-on-hyper-v
   Convert-VHD -Path "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -DestinationPath $VMDiskPath -VHDType Dynamic -BlockSizeBytes 1MB
   Write-Host -ForegroundColor Green " Done."
-  if ($VHDSizeBytes) {
-    Write-Host "Resize VHD to $([int]($VHDSizeBytes / 1024 / 1024 / 1024)) GB..." -NoNewline
-    Resize-VHD -Path $VMDiskPath -SizeBytes $VHDSizeBytes
-    Write-Host -ForegroundColor Green " Done."
-  }
 } catch {
-  Write-Warning "Failed to convert and resize, will just copy it ..."
+  Write-Warning "Failed to convert, will just copy it ..."
   Copy-Item "$($ImageCachePath)\$($ImageOS)-$($stamp).vhd" -Destination $VMDiskPath
+}
+
+if ($VHDSizeBytes) {
+  Write-Host "Resize VHD to $([int]($VHDSizeBytes / 1024 / 1024 / 1024)) GB..." -NoNewline
+  Resize-VHD -Path $VMDiskPath -SizeBytes $VHDSizeBytes -ErrorAction Stop
+  Write-Host -ForegroundColor Green " Done."
 }
 
 # Create new virtual machine and start it
