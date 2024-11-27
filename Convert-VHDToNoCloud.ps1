@@ -1,4 +1,4 @@
-# this script will try to mount VHD in WSL
+﻿# this script will try to mount VHD in WSL
 # and then rewrite some files on ext4 filesystem
 # to enable NoCloud datasource in cloud-init
 
@@ -17,7 +17,8 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $true)]
-    [String] $VHDPath
+    [String] $VHDPath,
+    [String] $TempPath = [IO.Path]::GetTempDirectory()
 )
 
 $VHDPath = (Get-Item $VHDPath | Resolve-Path).ProviderPath
@@ -52,18 +53,18 @@ Write-Verbose "::: Create Diskpart commands ..."
 select vdisk file="$($VHDPath)"
 attach vdisk noerr
 detail vdisk
-"@ | Out-File "${PSScriptRoot}/diskpart-mount.txt" -Encoding ascii
+"@ | Out-File "$TempPath/diskpart-mount.txt" -Encoding ascii
 
 
 @"
 select vdisk file="$($VHDPath)"
 detach vdisk noerr
-"@ | Out-File "${PSScriptRoot}/diskpart-unmount.txt" -Encoding ascii
+"@ | Out-File "$TempPath/diskpart-unmount.txt" -Encoding ascii
 
 
 Write-Verbose "::: Mount VHD to Windows ..."
 
-diskpart /s "${PSScriptRoot}/diskpart-mount.txt"
+diskpart /s "$TempPath/diskpart-mount.txt"
 Start-Sleep -Seconds 10
 
 Write-Verbose "::: Get PHYSICALDRIVE { ID } of mounted VHD..."
@@ -86,7 +87,7 @@ Write-Verbose "::: Unmount VHD from WSL ..."
 wsl --unmount "\\.\PHYSICALDRIVE${deviceID}"
 
 Write-Verbose "::: Unmount VHD from Windows ..."
-diskpart /s "${PSScriptRoot}/diskpart-unmount.txt"
+diskpart /s "$TempPath/diskpart-unmount.txt"
 
 #:CLEANUP
 if (-not [bool]($PSCmdlet.MyInvocation.BoundParameters["Debug"]).IsPresent) {
