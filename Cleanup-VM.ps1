@@ -12,6 +12,12 @@ param(
 )
 
 if ($Force -or $PSCmdlet.ShouldContinue("Are you sure you want to delete VM?", "Data purge warning")) {
+
+    # pwsh (powershell core): try to load module hyper-v
+    if ($psversiontable.psversion.Major -ge 6) {
+        Import-Module hyper-v -SkipEditionCheck
+    }
+
     if ($VMNames.Count -gt 0) {
         Write-Host "Stop and delete VM's and its data files..." -NoNewline
 
