@@ -149,6 +149,12 @@ function cleanupFile ([string]$file) {
   }
 }
 
+# set system wide place to put all data created by the script
+$dataPath = "$env:ProgramData\hyperv-vm-provisioning"
+$cachePath = "$dataPath\cache"
+if (!(test-path $cachePath)) {mkdir -Path $cachePath | out-null}
+Write-Verbose "Using cache path: $cachePath"
+
 $FQDN = $VMHostname.ToLower() + "." + $DomainName.ToLower()
 # Instead of GUID, use 26 digit machine id suitable for BIOS serial number
 # src: https://stackoverflow.com/a/67077483/1155121
@@ -836,7 +842,7 @@ Write-Verbose "Metadata iso written"
 Write-Host -ForegroundColor Green " Done."
 
 # storage location for base images
-$ImageCachePath = Join-Path $PSScriptRoot $("cache\CloudImage-$ImageOS-$ImageVersion")
+$ImageCachePath = Join-Path $cachePath $("CloudImage-$ImageOS-$ImageVersion")
 if (!(test-path $ImageCachePath)) {mkdir -Path $ImageCachePath | out-null}
 
 # Get the timestamp of the target build on the cloud-images site
